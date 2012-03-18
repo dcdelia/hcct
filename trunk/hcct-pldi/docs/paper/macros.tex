@@ -1,0 +1,169 @@
+
+\newcommand{\dataflow}{dataflow}
+\newcommand{\dc}{\mbox{\sc DC}}
+%\newcommand{\trans}{\,\Downarrow}
+\newcommand{\trans}{\,\Rightarrow}
+%\newcommand{\trans}{\, \rightarrow}
+\newcommand{\normal}{\mbox{\tt{normal}}}
+\newcommand{\reactive}{\mbox{\tt{reactive}}}
+%\newcommand{\self}{\mbox{\tt{self}}}
+\newcommand{\self}{\mbox{$c_{self}$}}
+\newcommand{\pick}{\mbox{\tt{pick}}}
+\newcommand{\newcons}{\mbox{\tt{newcons}}}
+\newcommand{\delcons}{\mbox{\tt{delcons}}}
+\newcommand{\while}{\mbox{\sc While}}
+\newcommand{\dwhile}{\mbox{\sc DWhile}}
+\newcommand{\wwhile}{\mbox{\bf while}}
+\newcommand{\wdo}{\mbox{\bf do}}
+\newcommand{\wskip}{\mbox{\bf skip}}
+\newcommand{\wif}{\mbox{\bf if}}
+\newcommand{\wthen}{\mbox{\bf then}}
+\newcommand{\welse}{\mbox{\bf else}}
+\newcommand{\emphasize}{\sc\small}
+\newcommand{\sq}{\mbox{\sc sq}}
+\newcommand{\csp}{\mbox{\sc csp}}
+\newcommand{\grid}{\mbox{\sc Grid}}
+\newcommand{\rgrid}{\mbox{\sc RGrid}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+\newtheorem{property}{Property}
+\newtheorem{invariant}{Invariant}
+\newtheorem{datastructure}{Data Structure}
+
+\newenvironment{proof}
+{\noindent   {\sc Proof.}}{\hspace*{\fill}$\Box$\par\vspace{2mm}}
+
+\newenvironment{sketch}
+{\noindent   {\sc Proof (sketch).}}{\hspace*{\fill}$\Box$\par\vspace{2mm}}
+
+\newcommand{\fullpaper}[1]{}
+\newcommand{\wmax}[1]{}
+\newcommand{\consact}[1]{#1}
+\newcommand{\colsp}{@{~~}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ENVIRONMENT FOR PROGRAMS AND ALGORITHMS:  figprog
+% REQUIRES TWO ARGUMENTS:                   label-string    caption
+%
+% EXAMPLE OF INVOCATION:
+%
+%       \begin{figprog}{alg:my-label}{My beautiful caption.}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\LaBeL}{UNO}
+\newcommand{\CaPtIoN}{DUE}
+\newenvironment{figprog}[3]{%
+\renewcommand{\LaBeL}{#1}%
+\renewcommand{\CaPtIoN}{#2}%
+\begin{figure}[#3]%
+%\vspace{-.1in}%
+\noindent~\hrulefill~%
+\vspace{-.05in}%
+\begin{prog}{\footnotesize}%
+}{\end{prog}%
+\vspace{-.10in}%
+\noindent~\hrulefill~%
+\vspace{-.08in}%
+\caption{\CaPtIoN}%
+\label{\LaBeL}%
+\end{figure}%
+}
+
+\newcommand{\FoNtSiZe}{ONE}
+\newenvironment{frameprog}[2]{%
+\renewcommand{\FoNtSiZe}{#2}%
+% \begin{center}%
+\begin{minipage}{#1}%
+% \vspace{10mm}%
+% ~\hrulefill~%
+% \vspace{-.05in}%
+\begin{prog}{\FoNtSiZe}%
+}{\end{prog}%
+\vspace{-.10in}%
+% ~\hrulefill~%
+% \vspace{-.08in}%
+\end{minipage}%
+% \end{center}%
+}
+
+
+
+%%%%%%%%%%%%%
+% Step numbering (within algorithms)
+
+\newcounter{stepcount}
+\newcommand{\steplabel}[1]{\newcounter{#1}\setcounter{#1}{\thestepcount}}
+%%%%% Reference to step-labels:
+%%%%% "\steplabel" must be before "\stepref"
+\newcommand{\stepref}[1]{\arabic{#1}}
+
+\newcounter{poi}
+\newcommand{\N}{\stepcounter{poi} \< \thepoi . \>}
+\newcommand{\RC}{\setcounter{poi}{0}}
+\newcommand{\rem}[1]{\mbox{\rm \{#1\}}}
+\newcommand{\rrem}[1]{\`\mbox{\rm\small \{#1\}}}
+\newcommand{\srem}[1]{~~~~~\mbox{\rm \{#1\}}}
+\newcommand{\linelabel}[1]{\newcounter{#1}\setcounter{#1}{\thepoi}}
+\newcommand{\lineref}[1]{\arabic{#1}}
+\newenvironment{prog}[1]{#1 %\tt%\small %%% eliminati \tt\small
+\setcounter{poi}{0}
+\vspace{-.15in}
+\begin{tabbing}
+=spa\=spa\=spa\=spa\=spa\=spa\=spa\=spa\=spa\=spa\=spa\=spa\=spa\=\kill
+\+\\}{
+\end{tabbing}
+\vspace{-.15in}
+}
+
+%%%%%%%%%%%%%
+% Commands: Programs and Pseudocode
+
+\newcommand {\ALGORITHM}{\mbox{\bf algorithm}}
+\newcommand {\AND}{\mbox{\bf and}}
+\newcommand {\BEGIN}{\mbox{\bf begin}}
+\newcommand {\BREAK}{\mbox{\bf break}}
+\newcommand {\DO}{\mbox{\bf do}}
+\newcommand {\CONTINUE}{\mbox{\bf continue}}
+\newcommand {\EACH}{\mbox{\bf each}}
+\newcommand {\ELSE}{\mbox{\bf else}}
+\newcommand {\END}{\mbox{\bf end}}
+\newcommand {\ENDWHILE}{\mbox{\bf endwhile}}
+\newcommand {\ERROR}{\mbox{\bf ERROR}}
+\newcommand {\EXIT}{\mbox{\bf EXIT}}
+\newcommand {\FALSE}{\mbox{\bf false}}
+\newcommand {\FOR}{\mbox{\bf for}}
+\newcommand {\ENDFOR}{\mbox{\bf endfor}}
+\newcommand {\FOREACH}{\mbox{\bf for each}}
+\newcommand {\FUNCTION}{\mbox{\bf function}}
+\newcommand {\IF}{\mbox{\bf if}}
+\newcommand {\ENDIF}{\mbox{\bf endif}}
+\newcommand {\GOTO}{\mbox{\bf goto}}
+\newcommand {\HALT}{\mbox{\bf HALT}}
+\newcommand {\LET}{\mbox{\bf let}}
+\newcommand {\OR}{\mbox{\bf or}}
+\newcommand {\NIL}{\mbox{\bf nil}}
+\newcommand {\NOT}{\mbox{\bf not}}
+\newcommand {\NULL}{\mbox{{\bf Null}}}
+\newcommand {\PRINT}{\mbox{\bf print}}
+\newcommand {\PROGRAM}{\mbox{\bf program}}
+\newcommand {\PROCEDURE}{\mbox{\bf procedure}}
+\newcommand {\REPEAT}{\mbox{\bf repeat}}
+\newcommand {\REPORT}{\mbox{\bf report}}
+\newcommand {\RETURN}{\mbox{\bf return}}
+\newcommand {\STEP}{\mbox{\normalsize\bf Step}}
+\newcommand {\THEN}{\mbox{\bf then}}
+\newcommand {\TO}{\mbox{\bf to}}
+\newcommand {\TRUE}{\mbox{\bf true}}
+\newcommand {\UNTIL}{\mbox{\bf until}}
+\newcommand {\WHILE}{\mbox{\bf while}}
+\newcommand {\VAR}{\mbox{\bf var}}
+\newcommand {\CASE}{\mbox{\bf case:}}
+\newcommand {\ENDCASE}{\mbox{\bf endcase}}
+\newcommand {\INPUT} {\mbox{\bf input}}
+\newcommand {\OUTPUT} {\mbox{\bf output}}
+
