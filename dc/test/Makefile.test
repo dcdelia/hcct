@@ -1,0 +1,156 @@
+# ============================================================================
+#  dc/test/Makefile.test
+# ============================================================================
+
+#  Author:         (c) 2010 Camil Demetrescu, Irene Finocchi, Andrea Ribichini
+#  License:        See the end of this file for license information
+#  Created:        October 23, 2010
+#  Module:         dc/test
+
+#  Last changed:   $Date: 2010/11/18 09:07:28 $
+#  Changed by:     $Author: ribbi $
+#  Revision:       $Revision: 1.37 $
+
+
+CC = gcc
+C++ = g++
+RM = ../../rm
+OUT_DIR = ../bin/
+LIB = -L../lib -L$(RM)/lib/ -ldc -ldisasm -lm -lrm -lelf -lglib-2.0
+INC = -I../include -I$(RM)/include/ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
+TEST_SRC = profile.c test-driver.c logfile.c
+FLAGS_O0 = -m32 -g -O0 -D OPT=\"O0\" -D DEBUG=0 -D DC=1 -D LOGS_DIR=\"logs/\"
+FLAGS_O3 = -m32 -O3 -Wall -D OPT=\"03\" -D DEBUG=0 -D DC=1 -D LOGS_DIR=\"logs/\"
+
+
+all: merger mapper exptrees halver adder splitter
+
+merger:
+	$(CC) $(FLAGS_O0) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)merger-test-driver-O0 merger-test.c merger-nohash.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+	$(CC) $(FLAGS_O3) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)merger-test-driver-O3 merger-test.c merger-nohash.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+
+merger-test-1-1:
+	rm -f merger-test-*.log
+	for input_size in 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 ; do \
+    $(OUT_DIR)merger-test-driver-O0 $$input_size "1-1" merger-1-1-test-O0.log 971 1; \
+    $(OUT_DIR)merger-test-driver-O3 $$input_size "1-1" merger-1-1-test-O3.log 971 1; \
+    done
+
+merger-test-1-2:
+	rm -f merger-test-*.log
+	for input_size in 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 ; do \
+    $(OUT_DIR)merger-test-driver-O0 $$input_size "1-2" merger-1-2-test-O0.log 971 1; \
+    $(OUT_DIR)merger-test-driver-O3 $$input_size "1-2" merger-1-2-test-O3.log 971 1; \
+    done
+    
+adder:
+	$(CC) $(FLAGS_O0) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)adder-test-driver-O0 adder-test.c adder.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+	$(CC) $(FLAGS_O3) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)adder-test-driver-O3 adder-test.c adder.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)    
+		
+adder-test:
+	rm -f adder-test-*.log
+	for input_size in 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 ; do \
+    $(OUT_DIR)adder-test-driver-O0 $$input_size "n/a" adder-test-O0.log 971 1; \
+    $(OUT_DIR)adder-test-driver-O3 $$input_size "n/a" adder-test-O3.log 971 1; \
+    done
+    
+adder-test-final:
+	$(OUT_DIR)adder-test-driver-O3 100000 "n/a" adder-final-test-O3.log 971 5
+    
+splitter:
+	$(CC) $(FLAGS_O0) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)splitter-test-driver-O0 splitter-test.c splitter.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+	$(CC) $(FLAGS_O3) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)splitter-test-driver-O3 splitter-test.c splitter.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)    
+
+splitter-test:
+	rm -f splitter-test-*.log
+	for input_size in 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 ; do \
+    $(OUT_DIR)splitter-test-driver-O0 $$input_size "n/a" splitter-test-O0.log 971 1; \
+    $(OUT_DIR)splitter-test-driver-O3 $$input_size "n/a" splitter-test-O3.log 971 1; \
+    done
+
+halver:
+	$(CC) $(FLAGS_O0) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)halver-test-driver-O0 halver-test.c halver.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+	$(CC) $(FLAGS_O3) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)halver-test-driver-O3 halver-test.c halver.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+
+halver-test:
+	rm -f halver-test-*.log
+	for input_size in 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 ; do \
+    $(OUT_DIR)halver-test-driver-O0 $$input_size "n/a" halver-test-O0.log 971 1; \
+    $(OUT_DIR)halver-test-driver-O3 $$input_size "n/a" halver-test-O3.log 971 1; \
+    done
+    
+    
+mapper:
+	$(CC) $(FLAGS_O0) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)mapper-test-driver-O0 mapper-test.c mapper.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+	$(CC) $(FLAGS_O3) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)mapper-test-driver-O3 mapper-test.c mapper.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+
+mapper-nohash:
+	$(CC) $(FLAGS_O0) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)mapper-nohash-test-driver-O0 mapper-test.c mapper-nohash.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+	$(CC) $(FLAGS_O3) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)mapper-nohash-test-driver-O3 mapper-test.c mapper-nohash.c rlist.c list.c $(TEST_SRC) $(INC) $(LIB)
+
+mapper-test:
+	#rm -f mapper-test-*.log
+	for input_size in 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 ; do \
+    $(OUT_DIR)mapper-test-driver-O0 $$input_size "n/a" mapper-test-O0.log 971 1; \
+    $(OUT_DIR)mapper-test-driver-O3 $$input_size "n/a" mapper-test-O3.log 971 1; \
+    done
+    
+map-test-rnd:
+	rm -f map-test-rnd-dc.log
+	for seq_len in 1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072; do \
+    $(OUT_DIR)mapper-test-driver-O3 131072 "rnd-$$seq_len" map-test-rnd-dc.log 971 1; \
+    done
+    
+map-test-rnd2:
+	rm -f map-test-rnd2-dc.log
+	for seq_len in 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000 ; do \
+    $(OUT_DIR)mapper-test-driver-O3 100000 "rnd-$$seq_len" map-test-rnd2-dc.log 971 1; \
+    done
+    
+mapper-nohash-test:
+	#rm -f mapper-nohash-test-*.log
+	for input_size in 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 ; do \
+    $(OUT_DIR)mapper-nohash-test-driver-O0 $$input_size "n/a" mapper-nohash-test-O0.log 971 3; \
+    $(OUT_DIR)mapper-nohash-test-driver-O3 $$input_size "n/a" mapper-nohash-test-O3.log 971 3; \
+    done
+    
+exptrees:
+	$(CC) $(FLAGS_O0) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)exptrees-test-driver-O0 exptrees-test.c exptrees.c $(TEST_SRC) $(INC) $(LIB)
+	$(CC) $(FLAGS_O3) -D CONV=0 -D CHECK=1 -D MAKE_ASM_DUMP=1 \
+		-o $(OUT_DIR)exptrees-test-driver-O3 exptrees-test.c exptrees.c $(TEST_SRC) $(INC) $(LIB)
+
+exptrees-test:
+	rm -f exptrees-test-*.log
+	for input_size in 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 ; do \
+    $(OUT_DIR)exptrees-test-driver-O0 $$input_size "n/a" exptrees-test-O0.log 971 1; \
+    $(OUT_DIR)exptrees-test-driver-O3 $$input_size "n/a" exptrees-test-O3.log 971 1; \
+    done
+
+# Copyright (C) 2010 Camil Demetrescu, Irene Finocchi, Andrea Ribichini
+
+ #  This program is free software; you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation; either version 2 of the License, or
+ #  (at your option) any later version.
+
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program; if not, write to the Free Software
+ #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA 
