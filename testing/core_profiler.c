@@ -37,8 +37,8 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site) {
   //printf("ENTER: %p, from %p in thread %lu\n", this_fn, call_site, tls_local_data);
   //printf("ENTER: %p, from %p in thread %lu\n", this_fn, call_site, (unsigned long)pthread_self());
   
-  unsigned short cs= (unsigned short)(((unsigned long)call_site)&(0xFFFF));
-  printf("test call site: %lu, %hu\n", (unsigned long)this_fn, cs);
+  unsigned short cs= (unsigned short)(((unsigned long)call_site)&(0xFFFF)); // PLEASE CHECK THIS
+  //printf("test call site: %lu, %hu\n", (unsigned long)this_fn, cs);
  
    /*typeByte = RTN_ENTER_CS;
     // 2 bytes for call site (16 LSBs)
@@ -104,11 +104,35 @@ int __wrap_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *(*start
 	return __real_pthread_create(thread, attr, aux_routine, params);
 }
 
+void test3() {
+	int a=90;
+	a++;
+}
+
+void test2() {
+	int x=5;
+	x--;
+	test3();
+}
+
+void test1() {
+	int a=4;
+	for (;a>0;a--)
+		test2();
+	test3();
+}
+
 void *TaskCode(void *argument) 
 {
 	int tid;
 	tid = *((int *) argument);
 	//printf("Hello World! It's me, thread %d aka %lu! Setting tls_local_data to %lu..\n", tid, (unsigned long)syscall(__NR_gettid), tls_local_data);
+	
+	test1();
+	test2();
+	test1();
+	test3();
+	test2();
 	
 	if (tid%2==0) { // per provare due modi diversi di terminare thread (return o pthread_exit)
 		pthread_exit(NULL);
