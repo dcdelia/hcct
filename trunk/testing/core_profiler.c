@@ -6,8 +6,10 @@
 #include <asm/unistd.h> // per la costante di chiamata __NR_gettid
 #define NUM_THREADS 8
 
+#include "cct.h"
+
 // To compile:
-// gcc core_profiler.c -finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -o core_profiler -lpthread
+// gcc core_profiler.c cct.c -finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -o core_profiler -lpthread
 
 __thread unsigned long tls_local_data;
  
@@ -16,6 +18,8 @@ void __attribute__ ((constructor)) trace_begin (void) __attribute__((no_instrume
 void __attribute__ ((constructor)) trace_begin (void)
 {
 	printf("Inizio programma\n");
+	tls_local_data=(unsigned long)pthread_self();
+	cct_init();
 }
 
 // execute after termination
@@ -23,22 +27,32 @@ void __attribute__ ((destructor)) trace_end (void) __attribute__((no_instrument_
 void __attribute__ ((destructor)) trace_end (void)
 {
 	printf("Uscita dal programma\n");
+	cct_dump(cct_get_root(), 1);
 }
 
 // Routine enter
 void __cyg_profile_func_enter(void *this_fn, void *call_site)
                               __attribute__((no_instrument_function));
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
-  printf("ENTER: %p, from %p in thread %lu\n", this_fn, call_site, tls_local_data);
+  //printf("ENTER: %p, from %p in thread %lu\n", this_fn, call_site, tls_local_data);
   //printf("ENTER: %p, from %p in thread %lu\n", this_fn, call_site, (unsigned long)pthread_self());
+  
+  unsigned short cs= (unsigned short)(((unsigned long)call_site)&(0xFFFF));
+  printf("test call site: %lu, %hu\n", (unsigned long)this_fn, cs);
+ 
+   /*typeByte = RTN_ENTER_CS;
+    // 2 bytes for call site (16 LSBs)
+    myWrite(&ip, sizeof(ADDRINT)/2, 1, tr);*/
+	cct_enter((unsigned long)this_fn, cs);
 }
 
 // Routine exit
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
                              __attribute__((no_instrument_function));
 void __cyg_profile_func_exit(void *this_fn, void *call_site) {
-  printf("EXIT:  %p, from %p in thread %lu\n", this_fn, call_site, tls_local_data);
+  //printf("EXIT:  %p, from %p in thread %lu\n", this_fn, call_site, tls_local_data);
   //printf("EXIT:  %p, from %p in thread %lu\n", this_fn, call_site, (unsigned long)pthread_self());
+	cct_exit();
 }
 
 
@@ -46,6 +60,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site) {
 void uscita() __attribute__((no_instrument_function));
 void uscita() {
 	//printf("Sto uscendo da questo thread... %d\n", tls_local_data); fflush(0);
+	cct_dump(cct_get_root(), 1);
 }
 
 
@@ -54,7 +69,7 @@ void uscita() {
 void __wrap_pthread_exit(void *value_ptr) __attribute__((no_instrument_function));
 void __wrap_pthread_exit(void *value_ptr)
 {
-	printf("Uscita regolare, eri nel thread con tls %lu!\n", tls_local_data); fflush(0);
+	//printf("Uscita regolare, eri nel thread con tls %lu!\n", tls_local_data); fflush(0);
 	uscita();
 	__real_pthread_exit(value_ptr);
 }
@@ -69,10 +84,14 @@ void* aux_routine(void *arg) {
 	free(tmp);
 	//printf("Here!\n");
 	//printf("%lu\n", (unsigned long)orig_routine);
+	
+	cct_init();
+	
 	void *(*start_routine)(void*)=orig_routine;
 	void* ret=(*start_routine)(orig_arg);
 
-	printf("Intercettato uscita senza pthread_exit da %lu...\n", tls_local_data); fflush(0);
+	//printf("Intercettato uscita senza pthread_exit da %lu...\n", tls_local_data); fflush(0);
+	uscita();
 	return ret;
 }
 
@@ -89,7 +108,7 @@ void *TaskCode(void *argument)
 {
 	int tid;
 	tid = *((int *) argument);
-	printf("Hello World! It's me, thread %d aka %lu! Setting tls_local_data to %lu..\n", tid, (unsigned long)syscall(__NR_gettid), tls_local_data);
+	//printf("Hello World! It's me, thread %d aka %lu! Setting tls_local_data to %lu..\n", tid, (unsigned long)syscall(__NR_gettid), tls_local_data);
 	
 	if (tid%2==0) { // per provare due modi diversi di terminare thread (return o pthread_exit)
 		pthread_exit(NULL);
@@ -103,7 +122,7 @@ int main(void)
 	int thread_args[NUM_THREADS];
 	int rc, i;
 
-	printf("%lu\n", (unsigned long)TaskCode);
+	//printf("%lu\n", (unsigned long)TaskCode);
 
 	/* create all threads */
 	for (i=0; i<NUM_THREADS; ++i) {
