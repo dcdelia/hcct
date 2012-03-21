@@ -3,7 +3,7 @@
 #include "cct.h"
 //#include <asm/unistd.h> // per la costante di chiamata __NR_gettid
 
-#define STACK_MAX_DEPTH	1024
+#define STACK_MAX_DEPTH 1024
 
 // globals
 __thread int         cct_stack_idx;
@@ -59,15 +59,15 @@ void cct_exit() {
 }
 
 void cct_dump(cct_node_t* root, int indent) {
-	if (root==NULL) return;
-	
-	int i;
-	cct_node_t* ptr;
+        if (root==NULL) return;
+        
+        int i;
+        cct_node_t* ptr;
 
-	for (i=0; i<indent; ++i)
-		printf("-");
-	printf("> thread: %lu, address: %lu, call site: %hu, count: %lu\n", (unsigned long)pthread_self(), root->routine_id, root->call_site, root->counter);
-	
-	for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
-		cct_dump(ptr, indent+1);
+        for (i=0; i<indent; ++i)
+                printf("-");
+        printf("> thread: %lu, address: %lu, call site: %hu, count: %lu\n", (unsigned long)pthread_self(), root->routine_id, root->call_site, root->counter);
+        
+        for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
+                cct_dump(ptr, indent+1);
 }
