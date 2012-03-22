@@ -2,5 +2,5 @@
 CC  =		gcc
 OPTS =		-lm -finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -lpthread
 
-all:
-	$(CC) -o example $(LL) *.c $(OPTS)
+all:	cct.c core_profiler.c example.c
+		$(CC) -o example $(LL) core_profiler.c cct.c example.c $(OPTS)
