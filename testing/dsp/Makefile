@@ -16,6 +16,8 @@ C  =                        gcc -I$(LL_PATH)include -Iinclude -I../include
 LL =                        $(LL_PATH)src/core/common/*.c $(LL_PATH)src/core/posix/*.c
 OPTS_STD =					-lm
 OPTS_INSTR =				-lm -finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -lpthread
+CCT_FILES =					../../cct.c ../../core_profiler.c ../../allocator/pool.c
+LSS_HCCT_FILES = 			../../lss-hcct.c ../../core_profiler.c ../../allocator/pool.c
 
 #                           -------------------------------------
 #                           Rules
@@ -26,7 +28,8 @@ all:
 	                        cd bin; $(C) -o dsp $(LL) ../src/*.c $(OPTS_STD)
 	                        
 instr:
-	                        cd bin; $(C) -o dsp-instr $(LL) ../src/*.c ../src/instr/*.c $(OPTS_INSTR)
+	                        cd bin; $(C) -o dsp-cct $(LL) ../src/*.c $(CCT_FILES) $(OPTS_INSTR)
+							cd bin; $(C) -o dsp-lss_hcct $(LL) ../src/*.c $(LSS_HCCT_FILES) $(OPTS_INSTR)
 	                        
 clean:
 							cd bin; rm -f *
