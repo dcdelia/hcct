@@ -1,0 +1,42 @@
+#                           -------------------------------------
+#                           Dynamic all-pairs shortest paths experimental package (dsp-1.0)
+#                           Makefile (c) 2002-2003 Camil Demetrescu
+#                           All rights reserved.
+#                           Last changed:   $Date: 2010/11/08 11:58:21 $
+#                           Changed by:     $Author: demetres $
+#                           Revision:       $Revision: 1.3 $
+
+#                           -------------------------------------
+
+#                           -------------------------------------
+#                           Macros
+#                           -------------------------------------
+LL_PATH =                   ../ll/
+C  =                        gcc -I$(LL_PATH)include -Iinclude -I../include
+LL =                        $(LL_PATH)src/core/common/*.c $(LL_PATH)src/core/posix/*.c
+OPTS_STD =					-lm
+OPTS_INSTR =				-lm -finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -lpthread
+
+#                           -------------------------------------
+#                           Rules
+#                           -------------------------------------
+
+
+all:
+	                        cd bin; $(C) -o dsp $(LL) ../src/*.c $(OPTS_STD)
+	                        
+instr:
+	                        cd bin; $(C) -o dsp-instr $(LL) ../src/*.c ../src/instr/*.c $(OPTS_INSTR)
+	                        
+clean:
+							cd bin; rm -f *
+
+test:
+	                        cd bin; $(C) -o TestLHeap $(LL) ../test/TestLHeap.c $(OPTS_STD)
+
+gprof:
+	                        cd bin; $(C) -pg -o dsp $(LL) ../src/*.c $(OPTS_STD)
+
+pack:
+	                        $(MAKE) clean; cd ..; tar cf dsp-1.0.tar dsp-1.0; gzip dsp-1.0.tar
+
