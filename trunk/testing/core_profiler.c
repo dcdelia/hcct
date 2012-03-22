@@ -18,7 +18,7 @@ void __attribute__ ((constructor)) trace_begin (void)
         hcct_thread_id=syscall(__NR_gettid);
         printf("[profiler] program start - tid %d\n", hcct_thread_id);
                 
-        cct_init();
+        hcct_init();
 }
 
 // execute after termination
@@ -26,7 +26,7 @@ void __attribute__ ((destructor)) trace_end (void) __attribute__((no_instrument_
 void __attribute__ ((destructor)) trace_end (void)
 {
         printf("[profiler] program exit - tid %d\n", hcct_thread_id);
-        cct_dump(cct_get_root(), 1);
+        hcct_dump(hcct_get_root(), 1);
 }
 
 // Routine enter
@@ -41,7 +41,7 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 	// 2 bytes for call site (16 LSBs)
 	myWrite(&ip, sizeof(ADDRINT)/2, 1, tr);*/
 	
-	cct_enter((unsigned long)this_fn, cs);
+	hcct_enter((unsigned long)this_fn, cs);
 }
 
 // Routine exit
@@ -49,7 +49,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
                              __attribute__((no_instrument_function));
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
 {	
-        cct_exit();
+        hcct_exit();
 }
 
 
@@ -57,7 +57,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 void uscita() __attribute__((no_instrument_function));
 void uscita() {
         //printf("Sto uscendo da questo thread... %d\n", tls_local_data); fflush(0);
-        cct_dump(cct_get_root(), 1);
+        hcct_dump(hcct_get_root(), 1);
 }
 
 
@@ -78,7 +78,7 @@ void* aux_routine(void *arg)
         //tls_local_data=(unsigned long)pthread_self();
         hcct_thread_id=syscall(__NR_gettid);
          
-        cct_init();
+        hcct_init();
 
 		// Una porcheria :)
 		void** tmp=(void**)arg;
