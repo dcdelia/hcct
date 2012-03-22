@@ -1,9 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cct.h"
-//#include <asm/unistd.h> // per la costante di chiamata __NR_gettid
 
-#define STACK_MAX_DEPTH 1024
+#define STACK_MAX_DEPTH	1024
+
+#if USE_MALLOC==0
+	#include "allocator/pool.h"
+	#define PAGE_SIZE		1024
+	__thread pool_t     *cct_pool;
+	__thread void       *cct_free_list;
+#endif
 
 // globals
 __thread int         cct_stack_idx;
@@ -19,8 +25,23 @@ int cct_init() {
 
     cct_stack_idx   = 0;
     cct_nodes       = 1;
-
+    
+    #if USE_MALLOC    
     cct_stack[0]=(cct_node_t*)malloc(sizeof(cct_node_t));
+    #else
+    // initialize custom memory allocator
+    cct_pool = pool_init(PAGE_SIZE, sizeof(cct_node_t), &cct_free_list);
+    if (cct_pool == NULL) {
+			printf("[hcct] error while initializing allocator... Quitting!\n");
+			exit(1);
+	}
+
+    pool_alloc(cct_pool, cct_free_list, cct_stack[0], cct_node_t);
+    if (cct_stack[0] == NULL) {
+			printf("[hcct] error while initializing cct root node... Quitting!\n");
+			exit(1);
+	}
+	#endif
 
     cct_stack[0]->first_child = NULL;
     cct_stack[0]->next_sibling = NULL;
@@ -44,7 +65,11 @@ void cct_enter(UINT32 routine_id, UINT16 call_site) {
     }
 
     ++cct_nodes;
+    #if USE_MALLOC
     node=(cct_node_t*)malloc(sizeof(cct_node_t));
+    #else
+    pool_alloc(cct_pool, cct_free_list, node, cct_node_t);
+    #endif
     cct_stack[cct_stack_idx] = node;
     node->routine_id = routine_id;
     node->first_child = NULL;
@@ -59,6 +84,7 @@ void cct_exit() {
 }
 
 void cct_dump(cct_node_t* root, int indent) {
+		#if DUMP
         if (root==NULL) return;
         
         int i;
@@ -70,4 +96,5 @@ void cct_dump(cct_node_t* root, int indent) {
         
         for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
                 cct_dump(ptr, indent+1);
+        #endif
 }

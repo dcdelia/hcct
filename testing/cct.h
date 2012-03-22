@@ -1,6 +1,14 @@
 #define UINT32 unsigned long
 #define UINT16 unsigned short
 
+#ifndef USE_MALLOC
+#define USE_MALLOC 0
+#else
+#define USE_MALLOC 1
+#endif
+
+#define DUMP 0
+
 typedef struct cct_node_s cct_node_t;
 struct cct_node_s {
     UINT32      routine_id;    

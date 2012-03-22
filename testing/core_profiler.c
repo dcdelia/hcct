@@ -26,7 +26,7 @@ void __attribute__ ((destructor)) trace_end (void) __attribute__((no_instrument_
 void __attribute__ ((destructor)) trace_end (void)
 {
         printf("[profiler] program exit - tid %d\n", hcct_thread_id);
-        //cct_dump(cct_get_root(), 1);
+        cct_dump(cct_get_root(), 1);
 }
 
 // Routine enter
@@ -57,7 +57,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site)
 void uscita() __attribute__((no_instrument_function));
 void uscita() {
         //printf("Sto uscendo da questo thread... %d\n", tls_local_data); fflush(0);
-        //cct_dump(cct_get_root(), 1);
+        cct_dump(cct_get_root(), 1);
 }
 
 
