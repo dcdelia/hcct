@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include "cct.h"
 
-#define STACK_MAX_DEPTH	1024
-
 #if USE_MALLOC==0
 	#include "allocator/pool.h"
 	#define PAGE_SIZE		1024
@@ -17,11 +15,11 @@ __thread cct_node_t *cct_stack[STACK_MAX_DEPTH];
 __thread cct_node_t *cct_root;
 __thread UINT32      cct_nodes;
 
-cct_node_t* cct_get_root() {
+cct_node_t* hcct_get_root() {
     return cct_root;
 }
 
-int cct_init() {
+int hcct_init() {
 
     cct_stack_idx   = 0;
     cct_nodes       = 1;
@@ -50,7 +48,7 @@ int cct_init() {
     return 0;
 }
 
-void cct_enter(UINT32 routine_id, UINT16 call_site) {
+void hcct_enter(UINT32 routine_id, UINT16 call_site) {
 
     cct_node_t *parent=cct_stack[cct_stack_idx++];
     cct_node_t *node;
@@ -78,12 +76,13 @@ void cct_enter(UINT32 routine_id, UINT16 call_site) {
     node->next_sibling = parent->first_child;
     parent->first_child = node;
 }
-void cct_exit() {
+
+void hcct_exit() {
 
     cct_stack_idx--;
 }
 
-void cct_dump(cct_node_t* root, int indent) {
+void hcct_dump(cct_node_t* root, int indent) {
 		#if DUMP
         if (root==NULL) return;
         
@@ -95,6 +94,6 @@ void cct_dump(cct_node_t* root, int indent) {
         printf("> thread: %lu, address: %lu, call site: %hu, count: %lu\n", (unsigned long)pthread_self(), root->routine_id, root->call_site, root->counter);
         
         for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
-                cct_dump(ptr, indent+1);
+                hcct_dump(ptr, indent+1);
         #endif
 }
