@@ -15,11 +15,13 @@ __thread cct_node_t *cct_stack[STACK_MAX_DEPTH];
 __thread cct_node_t *cct_root;
 __thread UINT32      cct_nodes;
 
-cct_node_t* hcct_get_root() {
+cct_node_t* hcct_get_root()
+{
     return cct_root;
 }
 
-int hcct_init() {
+int hcct_init()
+{
 
     cct_stack_idx   = 0;
     cct_nodes       = 1;
@@ -48,7 +50,8 @@ int hcct_init() {
     return 0;
 }
 
-void hcct_enter(UINT32 routine_id, UINT16 call_site) {
+void hcct_enter(UINT32 routine_id, UINT16 call_site)
+{
 
     cct_node_t *parent=cct_stack[cct_stack_idx++];
     cct_node_t *node;
@@ -77,13 +80,13 @@ void hcct_enter(UINT32 routine_id, UINT16 call_site) {
     parent->first_child = node;
 }
 
-void hcct_exit() {
-
+void hcct_exit()
+{
     cct_stack_idx--;
 }
 
-void hcct_dump(cct_node_t* root, int indent) {
-		#if DUMP
+void hcct_dump_aux(cct_node_t* root, int indent)
+{
         if (root==NULL) return;
         
         int i;
@@ -94,6 +97,12 @@ void hcct_dump(cct_node_t* root, int indent) {
         printf("> thread: %lu, address: %lu, call site: %hu, count: %lu\n", (unsigned long)pthread_self(), root->routine_id, root->call_site, root->counter);
         
         for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
-                hcct_dump(ptr, indent+1);
-        #endif
+                hcct_dump_aux(ptr, indent+1);
+}
+
+void hcct_dump()
+{
+	#if DUMP==1
+	hcct_dump_aux(hcct_get_root(), 1);
+	#endif
 }
