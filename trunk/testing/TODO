@@ -1,0 +1,7 @@
+- dump albero
+- sperimentare alternative a thread local storage di gcc?
+	https://blogs.oracle.com/seongbae/entry/pthread_get_set_specific_vs
+	http://stackoverflow.com/questions/506093/why-is-thread-local-storage-so-slow
+- gestire le fork
+- gestire atexit? abort??
+- shared libraries... extern? dl_(???)?

@@ -331,8 +331,7 @@ int hcct_init()
     return 0;
 }
 
-void hcct_dump(lss_hcct_node_t* root, int indent) {
-		#if DUMP
+void hcct_dump_aux(lss_hcct_node_t* root, int indent) {
         if (root==NULL) return;
         
         int i;
@@ -343,7 +342,11 @@ void hcct_dump(lss_hcct_node_t* root, int indent) {
         printf("> thread: %lu, address: %lu, call site: %hu, count: %lu\n", (unsigned long)pthread_self(), root->routine_id, root->call_site, root->counter);
         
         for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
-                hcct_dump(ptr, indent+1);
-        #endif
+                hcct_dump_aux(ptr, indent+1);
 }
 
+void hcct_dump() {
+	#if DUMP==1
+	hcct_dump_aux(hcct_get_root(), 1);
+	#endif
+}

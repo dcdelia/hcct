@@ -31,11 +31,16 @@ void *TaskCode(void *argument)
         tid = *((int *) argument);
         //printf("Hello World! It's me, thread %d aka %lu! Setting tls_local_data to %lu..\n", tid, (unsigned long)syscall(__NR_gettid), tls_local_data);
         
-        test1();
-        test2();
-        test1();
-        test3();
-        test2();
+        if (tid%2==0) {
+			test1();
+			test2();
+			test1();
+			test3();
+			test2();
+		} else {
+			test3();
+			test2();
+		}
         
         if (tid%2==0) { // per provare due modi diversi di terminare thread (return o pthread_exit)
                 pthread_exit(NULL);

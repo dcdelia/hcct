@@ -15,5 +15,5 @@ void hcct_enter(UINT32 routine_id, UINT16 call_site) {
 void hcct_exit() {
 }
 
-void hcct_dump(void* root, int indent) {
+void hcct_dump() {
 }
