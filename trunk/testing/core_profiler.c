@@ -5,7 +5,15 @@
 #include <asm/unistd.h> // syscall(__NR_gettid)
 #include <sys/types.h> // pid_t
 
+#ifdef PROFILER_CCT
 #include "cct.h"
+#else
+#ifdef PROFILER_EMPTY
+#include "empty.h"
+#else
+#include "lss-hcct.h"
+#endif
+#endif
 
 //__thread unsigned long tls_local_data;
 __thread pid_t hcct_thread_id;
