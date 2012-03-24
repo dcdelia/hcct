@@ -331,7 +331,8 @@ int hcct_init()
     return 0;
 }
 
-void hcct_dump_aux(lss_hcct_node_t* root, int indent) {
+void __attribute__((no_instrument_function)) hcct_dump_aux(lss_hcct_node_t* root, int indent)
+{
         if (root==NULL) return;
         
         int i;
