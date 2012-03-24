@@ -26,4 +26,3 @@ int hcct_init() __attribute__((no_instrument_function));
 void hcct_enter(UINT32 routine_id, UINT16 call_site) __attribute__((no_instrument_function));
 void hcct_exit() __attribute__((no_instrument_function));
 void hcct_dump() __attribute__((no_instrument_function));
-void hcct_dump_aux(lss_hcct_node_t* root, int indent) __attribute__((no_instrument_function));

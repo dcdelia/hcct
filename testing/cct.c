@@ -85,7 +85,7 @@ void hcct_exit()
     cct_stack_idx--;
 }
 
-void hcct_dump_aux(cct_node_t* root, int indent)
+void __attribute__((no_instrument_function)) hcct_dump_aux(cct_node_t* root, int indent)
 {
         if (root==NULL) return;
         
