@@ -98,8 +98,7 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(cct_node_t* root, int
 		#if DUMP==1
 		int i;
 		printf("[thread: %lu] ", hcct_thread_id);	
-        for (i=0; i<indent; ++i)
-                printf("-");
+        for (i=0; i<indent; ++i) printf("-");
         printf("> address: %lu, call site: %hu, count: %lu\n", root->routine_id, root->call_site, root->counter);
         #endif
         
