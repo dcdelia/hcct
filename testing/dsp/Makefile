@@ -15,10 +15,11 @@ LL_PATH =                   ../ll/
 C  =                        gcc -I$(LL_PATH)include -Iinclude -I../include
 LL =                        $(LL_PATH)src/core/common/*.c $(LL_PATH)src/core/posix/*.c
 OPTS_STD =					-lm
-OPTS_INSTR =				-lm -finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -lpthread
-CCT_FILES =					../../cct.c ../../core_profiler.c ../../allocator/pool.c
-LSS_HCCT_FILES = 			../../lss-hcct.c ../../core_profiler.c ../../allocator/pool.c
-EMPTY_FILES = 				../../empty.c ../../core_profiler.c
+OPTS_INSTR =				$(OPTS_STD) -finstrument-functions -lpthread -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
+#OPTS_INSTR =				-lm -finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -lpthread
+#CCT_FILES =					../../cct.c ../../core_profiler.c ../../allocator/pool.c
+#LSS_HCCT_FILES = 			../../lss-hcct.c ../../core_profiler.c ../../allocator/pool.c
+#EMPTY_FILES = 				../../empty.c ../../core_profiler.c
 
 #                           -------------------------------------
 #                           Rules
@@ -29,9 +30,13 @@ all:
 	                        cd bin; $(C) -o dsp $(LL) ../src/*.c $(OPTS_STD)
 	                        
 instr:
-	                        cd bin; $(C) -o dsp-cct $(LL) ../src/*.c $(CCT_FILES) -DPROFILER_CCT $(OPTS_INSTR)
-							cd bin; $(C) -o dsp-lss_hcct $(LL) ../src/*.c $(LSS_HCCT_FILES) $(OPTS_INSTR)
-							cd bin; $(C) -o dsp-empty $(LL) ../src/*.c $(EMPTY_FILES) -DPROFILER_EMPTY $(OPTS_INSTR)
+	                        ## Vecchio stile :P
+							#cd bin; $(C) -o dsp-lss $(LL) ../src/*.c $(LSS_HCCT_FILES) $(OPTS_INSTR)
+	                        cd bin; $(C) -o dsp-cct $(LL) ../src/*.c -L../../libs -lhcct_cct $(OPTS_INSTR)
+	                        cd bin; $(C) -o dsp-cct_malloc $(LL) ../src/*.c -L../../libs -lhcct_cct_malloc $(OPTS_INSTR)
+	                        cd bin; $(C) -o dsp-lss $(LL) ../src/*.c -L../../libs -lhcct_lss $(OPTS_INSTR)
+	                        cd bin; $(C) -o dsp-empty $(LL) ../src/*.c -L../../libs -lhcct_empty $(OPTS_INSTR)	                        
+							@echo "Remember to execute once: export LD_LIBRARY_PATH=\$$PWD/libs:\$$LD_LIBRARY_PATH"							
 	                        
 clean:
 							cd bin; rm -f *
