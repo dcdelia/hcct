@@ -1,3 +1,4 @@
+- fpic per shared libraries???
 - dump albero e tool separato di analisi
 - vedere struttura funzioni
 - sistemare porcherie varie tra header e valori di ritorno
