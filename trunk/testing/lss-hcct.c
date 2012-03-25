@@ -344,8 +344,7 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(lss_hcct_node_t* root
 		#if DUMP==1
 		int i;
 		printf("[thread: %lu] ", hcct_thread_id);	
-        for (i=0; i<indent; ++i)
-                printf("-");
+        for (i=0; i<indent; ++i) printf("-");
         printf("> address: %lu, call site: %hu, count: %lu\n", root->routine_id, root->call_site, root->counter);
         #endif
         
@@ -355,7 +354,6 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(lss_hcct_node_t* root
 
 void hcct_dump()
 {
-	
 	unsigned long nodes=0;
 	hcct_dump_aux(hcct_get_root(), 1, &nodes);
 	printf("[thread: %lu] Total number of nodes: %lu\n", hcct_thread_id, nodes);		
