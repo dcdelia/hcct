@@ -15,6 +15,9 @@ __thread cct_node_t *cct_stack[STACK_MAX_DEPTH];
 __thread cct_node_t *cct_root;
 __thread UINT32      cct_nodes;
 
+// TODO
+extern __thread pid_t hcct_thread_id;
+
 cct_node_t* hcct_get_root()
 {
     return cct_root;
@@ -85,24 +88,29 @@ void hcct_exit()
     cct_stack_idx--;
 }
 
-void __attribute__((no_instrument_function)) hcct_dump_aux(cct_node_t* root, int indent)
+void __attribute__((no_instrument_function)) hcct_dump_aux(cct_node_t* root, int indent, unsigned long *nodes)
 {
         if (root==NULL) return;
         
-        int i;
+        (*nodes)++;        
         cct_node_t* ptr;
 
+		#if DUMP==1
+		int i;
+		printf("[thread: %lu] ", hcct_thread_id);	
         for (i=0; i<indent; ++i)
                 printf("-");
-        printf("> thread: %lu, address: %lu, call site: %hu, count: %lu\n", (unsigned long)pthread_self(), root->routine_id, root->call_site, root->counter);
+        printf("> address: %lu, call site: %hu, count: %lu\n", root->routine_id, root->call_site, root->counter);
+        #endif
         
         for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
-                hcct_dump_aux(ptr, indent+1);
+                hcct_dump_aux(ptr, indent+1, nodes);
+		
 }
 
 void hcct_dump()
 {
-	#if DUMP==1
-	hcct_dump_aux(hcct_get_root(), 1);
-	#endif
+	unsigned long nodes=0;
+	hcct_dump_aux(hcct_get_root(), 1, &nodes);
+	printf("[thread: %lu] Total number of nodes: %lu\n", hcct_thread_id, nodes);	
 }
