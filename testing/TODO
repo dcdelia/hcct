@@ -1,6 +1,7 @@
+- rivedere extern per threadID
 - fpic per shared libraries???
 - dump albero e tool separato di analisi
-- vedere struttura funzioni
+- rivedere struttura funzioni
 - sistemare porcherie varie tra header e valori di ritorno
 - sperimentare alternative a thread local storage di gcc?
 	https://blogs.oracle.com/seongbae/entry/pthread_get_set_specific_vs
