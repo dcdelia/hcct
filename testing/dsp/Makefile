@@ -26,26 +26,28 @@ OPTS_INSTR =				$(OPTS_STD) -finstrument-functions -lpthread -Wl,-wrap,pthread_c
 #                           -------------------------------------
 
 
-all:
+all:						dsp instr gprof
+
+dsp:
 	                        cd bin; $(C) -o dsp $(LL) ../src/*.c $(OPTS_STD)
 	                        
 instr:
-	                        ## Vecchio stile :P
-							#cd bin; $(C) -o dsp-lss $(LL) ../src/*.c $(LSS_HCCT_FILES) $(OPTS_INSTR)
+	                        @## Vecchio stile :P
+							@#cd bin; $(C) -o dsp-lss $(LL) ../src/*.c $(LSS_HCCT_FILES) $(OPTS_INSTR)
 	                        cd bin; $(C) -o dsp-cct $(LL) ../src/*.c -L../../libs -lhcct_cct $(OPTS_INSTR)
 	                        cd bin; $(C) -o dsp-cct_malloc $(LL) ../src/*.c -L../../libs -lhcct_cct_malloc $(OPTS_INSTR)
 	                        cd bin; $(C) -o dsp-lss $(LL) ../src/*.c -L../../libs -lhcct_lss $(OPTS_INSTR)
 	                        cd bin; $(C) -o dsp-empty $(LL) ../src/*.c -L../../libs -lhcct_empty $(OPTS_INSTR)	                        
 							@echo "Remember to execute once: export LD_LIBRARY_PATH=\$$PWD/libs:\$$LD_LIBRARY_PATH"							
+
+gprof:
+	                        cd bin; $(C) -pg -o dsp-gprof $(LL) ../src/*.c $(OPTS_STD)
 	                        
 clean:
 							cd bin; rm -f *
 
 test:
 	                        cd bin; $(C) -o TestLHeap $(LL) ../test/TestLHeap.c $(OPTS_STD)
-
-gprof:
-	                        cd bin; $(C) -pg -o dsp $(LL) ../src/*.c $(OPTS_STD)
 
 pack:
 	                        $(MAKE) clean; cd ..; tar cf dsp-1.0.tar dsp-1.0; gzip dsp-1.0.tar

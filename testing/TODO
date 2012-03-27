@@ -1,4 +1,6 @@
+- discorso livello ottimizzazioni compilatore
 - rivedere extern per threadID
+- cose pthread che diceva Emilio per valgrind
 - fpic per shared libraries???
 - dump albero e tool separato di analisi
 - rivedere struttura funzioni

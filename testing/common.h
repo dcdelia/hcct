@@ -3,4 +3,5 @@
 
 #define STACK_MAX_DEPTH	1024
 #define PAGE_SIZE		1024
-#define DUMP			1
+#define DUMP_STATS		0
+#define DUMP_TREE		0
