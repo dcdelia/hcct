@@ -23,6 +23,7 @@ cct_node_t* hcct_get_root()
     return cct_root;
 }
 
+// TODO: sistemare per i valori di ritorno
 int hcct_init()
 {
 
@@ -95,9 +96,9 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(cct_node_t* root, int
         (*nodes)++;        
         cct_node_t* ptr;
 
-		#if DUMP==1
+		#if DUMP_TREE==1
 		int i;
-		printf("[thread: %lu] ", hcct_thread_id);	
+		printf("[thread: %d] ", hcct_thread_id);	
         for (i=0; i<indent; ++i) printf("-");
         printf("> address: %lu, call site: %hu, count: %lu\n", root->routine_id, root->call_site, root->counter);
         #endif
@@ -109,7 +110,9 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(cct_node_t* root, int
 
 void hcct_dump()
 {
+	#if DUMP_STATS==1
 	unsigned long nodes=0;
 	hcct_dump_aux(hcct_get_root(), 1, &nodes);
-	printf("[thread: %lu] Total number of nodes: %lu\n", hcct_thread_id, nodes);	
+	printf("[thread: %d] Total number of nodes: %lu\n", hcct_thread_id, nodes);	
+	#endif
 }

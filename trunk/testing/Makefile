@@ -1,5 +1,6 @@
 # Very simple makefile
-CC  =		gcc
+OPT_LEVEL =	-O3
+CC  =		gcc $(OPT_LEVEL)
 OPTS =		-finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -lpthread
 WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
@@ -12,15 +13,15 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h alloca
 		$(CC) -c empty.c
 		$(CC) -c lss-hcct.c
 		$(CC) -c allocator/pool.c
-		## Devo sistemare queste schifezze dei flag e degli include...
-		# empty profiler
+		@## Devo sistemare queste schifezze dei flag e degli include...
+		@# empty profiler
 		$(CC) -c core_profiler.c -DPROFILER_EMPTY
 		$(CC) -shared empty.o core_profiler.o -o libhcct_empty.so $(WRAP)
-		# cct profiler(s)
+		@# cct profiler(s)
 		$(CC) -c core_profiler.c -DPROFILER_CCT
 		$(CC) -shared cct.o core_profiler.o pool.o -o libhcct_cct.so $(WRAP)
 		$(CC) -shared cct_malloc.o core_profiler.o pool.o -o libhcct_cct_malloc.so $(WRAP)
-		# lss-hcct profiler
+		@# lss-hcct profiler
 		$(CC) -c core_profiler.c
 		$(CC) -shared lss-hcct.o core_profiler.o pool.o -o libhcct_lss.so $(WRAP)
 		mkdir -p libs
