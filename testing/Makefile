@@ -27,7 +27,7 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h alloca
 		mkdir -p libs
 		mv *.so libs/
 		rm -f *.o
-		@echo "Remember to execute once: export LD_LIBRARY_PATH=\$$PWD/libs:\$$LD_LIBRARY_PATH"
+		@echo "Remember to copy the libraries from libs/ in /usr/lib"
 
 test:	Makefile example.c libs/*.so
 		mkdir -p bin
@@ -35,7 +35,6 @@ test:	Makefile example.c libs/*.so
 		$(CC) -o bin/test_cct example.c -L./libs -lhcct_cct $(INSTR)
 		$(CC) -o bin/test_cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
 		$(CC) -o bin/test_lss example.c -L./libs -lhcct_lss $(INSTR)
-		@echo "Remember to execute once: export LD_LIBRARY_PATH=\$$PWD/libs:\$$LD_LIBRARY_PATH"
 
 clean:	
 		rm -rf libs bin

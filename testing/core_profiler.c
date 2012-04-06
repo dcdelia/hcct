@@ -22,7 +22,9 @@ __thread pid_t hcct_thread_id;
 void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 {
         hcct_thread_id=syscall(__NR_gettid);
+        #if SHOW_MESSAGES==1
         printf("[profiler] program start - tid %d\n", hcct_thread_id);
+        #endif
                 
         hcct_init();
 }
@@ -30,7 +32,9 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 // execute after termination
 void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 {
+		#if SHOW_MESSAGES==1
         printf("[profiler] program exit - tid %d\n", hcct_thread_id);
+        #endif
         hcct_dump(hcct_get_root(), 1);
 }
 
@@ -56,7 +60,9 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
 // wrap pthread_exit()
 void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr)
 {
+		#if SHOW_MESSAGES==1
 		printf("[profiler] pthread_exit - tid %d\n", hcct_thread_id);
+		#endif
 		
 		// Exit stuff
 		hcct_dump(hcct_get_root(), 1);
@@ -79,7 +85,9 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
 		// Run actual application thread's init routine
         void* ret=(*start_routine)(orig_arg);
 
+		#if SHOW_MESSAGES==1
         printf("[profiler] return - tid %d\n", hcct_thread_id);
+        #endif
         
         // Exit stuff
         hcct_dump(hcct_get_root(), 1);
