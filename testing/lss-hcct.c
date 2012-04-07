@@ -271,29 +271,46 @@ void hcct_exit()
     stack_idx--;
 }
 
-// TODO: sistemare per i valori di ritorno
 int hcct_init()
 {
 	// initialize parameters
-	epsilon=EPSILON;
-	phi=PHI;
+	char* value;
+    
+	value=getenv("EPSILON");
+	if (value == NULL || value[0]=='\0')
+	    epsilon=EPSILON;
+    else {
+        epsilon=strtoul(value, NULL, 0);
+        if (epsilon==0) {
+            printf("[hcct] WARNING: invalid value specified for EPSILON, using default instead\n");
+            epsilon=EPSILON;
+        }
+    }
+    
+    value=getenv("PHI");
+	if (value == NULL || value[0]=='\0')
+	    phi=PHI;
+    else {
+        phi=strtoul(value, NULL, 0);
+        if (phi==0) {
+            printf("[hcct] WARNING: invalid value specified for PHI, using default instead\n");
+            phi=PHI;
+        }
+    }
 
     // initialize custom memory allocator
     node_pool = 
-        pool_init(PAGE_SIZE, sizeof(lss_hcct_node_t), &free_list);    
-    //if (node_pool == NULL) return -1;
+        pool_init(PAGE_SIZE, sizeof(lss_hcct_node_t), &free_list);
     if (node_pool == NULL) {
 			printf("[hcct] error while initializing allocator... Quitting!\n");
-			exit(1);
+            return -1;
 	}
     
     // create dummy root node
-    pool_alloc(node_pool, free_list, 
-               hcct_root, lss_hcct_node_t);
-    //if (hcct_root == NULL) return -1;
+    pool_alloc(node_pool, free_list, hcct_root, lss_hcct_node_t);
     if (hcct_root == NULL) {
 			printf("[hcct] error while initializing hcct root node... Quitting!\n");
-			exit(1);
+			return -1;
 	}
     
     hcct_root->first_child  = NULL;
@@ -311,19 +328,17 @@ int hcct_init()
     #if UPDATE_MIN_SENTINEL == 1
     queue = (lss_hcct_node_t**)malloc((epsilon+1)*sizeof(lss_hcct_node_t*));
     pool_alloc(node_pool, free_list, queue[epsilon], lss_hcct_node_t);
-    //if (queue[epsilon] == NULL) return -1;
     if (queue[epsilon] == NULL) {
 			printf("[hcct] error while initializing lazy priority queue... Quitting!\n");
-			exit(1);
+			return -1;
 	}
     queue[epsilon]->counter = min = 0;
     #else
     queue = (lss_hcct_node_t**)malloc(epsilon*sizeof(lss_hcct_node_t*));
     #endif
-    //if (queue == NULL) return -1;
     if (queue == NULL) {
 			printf("[hcct] error while initializing lazy priority queue... Quitting!\n");
-			exit(1);
+			return -1;
 	}
     
     queue[0]        = hcct_root;

@@ -16,7 +16,7 @@
 #endif
 
 // globals
-__thread pid_t hcct_thread_id;
+__thread pid_t hcct_thread_id; // actually needed???
  
 // execute before main
 void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
@@ -26,7 +26,10 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         printf("[profiler] program start - tid %d\n", hcct_thread_id);
         #endif
                 
-        hcct_init();
+        if (hcct_init()==-1) {
+            printf("[profiler] error during initialization - exiting...\n");
+            exit(1);   
+        }
 }
 
 // execute after termination

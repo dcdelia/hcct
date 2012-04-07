@@ -1,7 +1,6 @@
 # Very simple makefile
 OPT_LEVEL =	-O3
 CC  =		gcc $(OPT_LEVEL)
-OPTS =		-finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -lpthread
 WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
@@ -24,13 +23,15 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h alloca
 		@# lss-hcct profiler
 		$(CC) -c core_profiler.c
 		$(CC) -shared lss-hcct.o core_profiler.o pool.o -o libhcct_lss.so $(WRAP)
-		mkdir -p libs
-		mv *.so libs/
-		rm -f *.o
-		@echo "Remember to copy the libraries from libs/ in /usr/lib"
+		@mkdir -p libs
+		@mv *.so libs/
+		@rm -f *.o
+		@echo "\n====================================================="
+		@echo "Remember to copy the libraries from libs/ to /usr/lib"
+		@echo "=====================================================\n"
 
-test:	Makefile example.c libs/*.so
-		mkdir -p bin
+test:	Makefile example.c
+		@mkdir -p bin
 		$(CC) -o bin/test_empty example.c -L./libs -lhcct_empty $(INSTR)
 		$(CC) -o bin/test_cct example.c -L./libs -lhcct_cct $(INSTR)
 		$(CC) -o bin/test_cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
@@ -38,13 +39,3 @@ test:	Makefile example.c libs/*.so
 
 clean:	
 		rm -rf libs bin
-
-#cct:	cct.c cct.h core_profiler.c example.c allocator/pool.c allocator/pool.h common.h
-		#$(CC) -o cct core_profiler.c cct.c example.c allocator/pool.c -DPROFILER_CCT $(OPTS) 
-		#$(CC) -o cct_malloc core_profiler.c cct.c example.c -DUSE_MALLOC -DPROFILER_CCT $(OPTS)
-		
-#lss-hcct:	lss-hcct.c lss-hcct.h core_profiler.c example.c allocator/pool.c allocator/pool.h common.h
-			#$(CC) -o lss-hcct core_profiler.c lss-hcct.c example.c allocator/pool.c $(OPTS)
-
-#empty:	core_profiler.c example.c empty.c empty.h common.h
-		#$(CC) -o empty core_profiler.c empty.c example.c $(OPTS) -DPROFILER_EMPTY
