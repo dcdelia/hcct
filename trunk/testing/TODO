@@ -1,7 +1,6 @@
 - static bursting con shadow stack
 - SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
 - cosa che diceva Emilio su perl e SPEC
-- getenv per passaggio parametri
 - addr2line e risoluzione indirizzi
 - discorso livello ottimizzazioni compilatore
 - rivedere extern per threadID
@@ -16,3 +15,4 @@
 - gestire le fork
 - gestire atexit? abort??
 - shared libraries... extern? dl_(???)?
+- controllo sui valori di ritorno malloc

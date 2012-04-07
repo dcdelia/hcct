@@ -23,7 +23,6 @@ cct_node_t* hcct_get_root()
     return cct_root;
 }
 
-// TODO: sistemare per i valori di ritorno
 int hcct_init()
 {
 
@@ -37,13 +36,13 @@ int hcct_init()
     cct_pool = pool_init(PAGE_SIZE, sizeof(cct_node_t), &cct_free_list);
     if (cct_pool == NULL) {
 			printf("[hcct] error while initializing allocator... Quitting!\n");
-			exit(1);
+			return -1;
 	}
 
     pool_alloc(cct_pool, cct_free_list, cct_stack[0], cct_node_t);
     if (cct_stack[0] == NULL) {
 			printf("[hcct] error while initializing cct root node... Quitting!\n");
-			exit(1);
+			return -1;
 	}
 	#endif
 
