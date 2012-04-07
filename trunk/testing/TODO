@@ -1,6 +1,8 @@
-- SPEC
+- static bursting con shadow stack
+- SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
+- cosa che diceva Emilio su perl e SPEC
 - getenv per passaggio parametri
-- addr2line & co
+- addr2line e risoluzione indirizzi
 - discorso livello ottimizzazioni compilatore
 - rivedere extern per threadID
 - cose pthread che diceva Emilio per valgrind
