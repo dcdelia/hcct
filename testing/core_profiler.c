@@ -5,6 +5,7 @@
 #include <asm/unistd.h> // syscall(__NR_gettid)
 #include <sys/types.h> // pid_t
 
+// Eliminare questa porcheria!!! :)
 #ifdef PROFILER_CCT
 #include "cct.h"
 #else
@@ -14,16 +15,12 @@
 #include "lss-hcct.h"
 #endif
 #endif
-
-// globals
-__thread pid_t hcct_thread_id; // actually needed???
  
 // execute before main
 void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 {
-        hcct_thread_id=syscall(__NR_gettid);
         #if SHOW_MESSAGES==1
-        printf("[profiler] program start - tid %d\n", hcct_thread_id);
+        printf("[profiler] program start - tid %d\n", syscall(__NR_gettid));
         #endif
                 
         if (hcct_init()==-1) {
@@ -36,7 +33,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 {
 		#if SHOW_MESSAGES==1
-        printf("[profiler] program exit - tid %d\n", hcct_thread_id);
+        printf("[profiler] program exit - tid %d\n", syscall(__NR_gettid));
         #endif
         hcct_dump(hcct_get_root(), 1);
 }
@@ -64,7 +61,7 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
 void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr)
 {
 		#if SHOW_MESSAGES==1
-		printf("[profiler] pthread_exit - tid %d\n", hcct_thread_id);
+		printf("[profiler] pthread_exit - tid %d\n", syscall(__NR_gettid));
 		#endif
 		
 		// Exit stuff
@@ -75,9 +72,7 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 
 // handles thread termination made without pthread_exit
 void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
-{
-        hcct_thread_id=syscall(__NR_gettid);
-         
+{                
         hcct_init();
 
         // Retrieve original routine address and argument        
@@ -89,7 +84,7 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
         void* ret=(*start_routine)(orig_arg);
 
 		#if SHOW_MESSAGES==1
-        printf("[profiler] return - tid %d\n", hcct_thread_id);
+        printf("[profiler] return - tid %d\n", syscall(__NR_gettid));
         #endif
         
         // Exit stuff
