@@ -23,19 +23,49 @@
 #define SetMonitored(x)     ((x)->additional_info=1)
 #define UnsetMonitored(x)   ((x)->additional_info=0)
 
-// globals
+// space saving global parameters - set by hcct_getenv()
+UINT32          epsilon;
+UINT32          phi;
+
+// thread local storage
 __thread unsigned          stack_idx;
 __thread lss_hcct_node_t  *stack[STACK_MAX_DEPTH];
 __thread lss_hcct_node_t  *hcct_root;
 __thread pool_t           *node_pool;
 __thread void             *free_list;
-__thread UINT32            min, epsilon, phi;
-__thread UINT32            min_idx, num_queue_items, second_min_idx;
+__thread UINT32            min, min_idx, num_queue_items, second_min_idx;
 __thread lss_hcct_node_t **queue;
 __thread int               queue_full;
 
-// TODO
-extern __thread pid_t hcct_thread_id;
+
+int hcct_getenv() {
+    // initialize parameters
+	char* value;
+    
+	value=getenv("EPSILON");
+	if (value == NULL || value[0]=='\0')
+	    epsilon=EPSILON;
+    else {
+        epsilon=strtoul(value, NULL, 0);
+        if (epsilon==0) {
+            epsilon=EPSILON;
+            printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%lu) instead\n", epsilon);
+        }
+    }
+    
+    value=getenv("PHI");
+	if (value == NULL || value[0]=='\0')
+	    phi=PHI;
+    else {
+        phi=strtoul(value, NULL, 0);
+        if (phi==0) {
+            phi=PHI;
+            printf("[hcct] WARNING: invalid value specified for PHI, using default (%lu) instead\n", phi);            
+        }
+    }
+    
+    return 0;
+}
 
 lss_hcct_node_t* hcct_get_root() {
     return hcct_root;
@@ -280,31 +310,6 @@ void hcct_exit()
 
 int hcct_init()
 {
-	// initialize parameters
-	char* value;
-    
-	value=getenv("EPSILON");
-	if (value == NULL || value[0]=='\0')
-	    epsilon=EPSILON;
-    else {
-        epsilon=strtoul(value, NULL, 0);
-        if (epsilon==0) {
-            printf("[hcct] WARNING: invalid value specified for EPSILON, using default instead\n");
-            epsilon=EPSILON;
-        }
-    }
-    
-    value=getenv("PHI");
-	if (value == NULL || value[0]=='\0')
-	    phi=PHI;
-    else {
-        phi=strtoul(value, NULL, 0);
-        if (phi==0) {
-            printf("[hcct] WARNING: invalid value specified for PHI, using default instead\n");
-            phi=PHI;
-        }
-    }
-
     // initialize custom memory allocator
     node_pool = 
         pool_init(PAGE_SIZE, sizeof(lss_hcct_node_t), &free_list);
@@ -386,7 +391,7 @@ void hcct_dump()
 	    char dumpFileName[25]; // up to 20 for PID (CHECK)	    
 	    sprintf(dumpFileName, "%d.log", tid);
         ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
-        if (ds == -1) exit((printf("[hcct] ERROR: can't create output file %s\n", dumpFileName), 1));
+        if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
         out = fdopen(ds, "w");    
 	    
 	    char *path = malloc(PATH_MAX);
@@ -397,7 +402,6 @@ void hcct_dump()
 	    // c <command> <process/thread id> <working directory>
 	    fprintf(out, "c lss-hcct %lu %lu\n", epsilon, phi);	    
 	    fprintf(out, "c %s %d %s\n", path+strlen(cwd), tid, cwd);
-	    fprintf(out, "c %s %d %s\n", path, tid, cwd);
 	    
 	    free(path);
 	    free(cwd);
@@ -406,7 +410,8 @@ void hcct_dump()
 	hcct_dump_aux(out, hcct_get_root(), &nodes);
 	
 	    #if DUMP_TREE==1
-	    fprintf(out, "p %lu\n", nodes); // for a sanity check
+	    fprintf(out, "p %lu\n", nodes); // for a sanity check in the analysis tool
+	    fclose(out);
 	    #endif
 	    
 	    #if DUMP_STATS==1

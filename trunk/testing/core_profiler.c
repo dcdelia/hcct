@@ -22,6 +22,11 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         #if SHOW_MESSAGES==1
         printf("[profiler] program start - tid %d\n", syscall(__NR_gettid));
         #endif
+        
+        if (hcct_getenv()!=0) {
+            printf("[profiler] error getting parameters - exiting...\n");
+            exit(1);   
+        }
                 
         if (hcct_init()==-1) {
             printf("[profiler] error during initialization - exiting...\n");

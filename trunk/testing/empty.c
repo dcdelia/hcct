@@ -5,6 +5,10 @@ void* hcct_get_root() {
     return NULL;
 }
 
+int hcct_getenv() {
+    return 0;
+}
+
 int hcct_init() {
     return 0;
 }
