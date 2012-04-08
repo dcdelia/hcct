@@ -1,3 +1,4 @@
+- sistemare cavolata su path/cwd
 - static bursting con shadow stack
 - SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
 - cosa che diceva Emilio su perl e SPEC
@@ -6,13 +7,14 @@
 - rivedere extern per threadID
 - cose pthread che diceva Emilio per valgrind
 - fpic per shared libraries???
-- dump albero e tool separato di analisi
+- tool separato di analisi
 - rivedere struttura funzioni
-- sistemare porcherie varie tra header e valori di ritorno
-- sperimentare alternative a thread local storage di gcc?
-	https://blogs.oracle.com/seongbae/entry/pthread_get_set_specific_vs
-	http://stackoverflow.com/questions/506093/why-is-thread-local-storage-so-slow
+- sistemare porcherie headers
 - gestire le fork
 - gestire atexit? abort??
 - shared libraries... extern? dl_(???)?
-- controllo sui valori di ritorno malloc
+- controllo sui valori di ritorno malloc ??
+- sperimentare alternative a thread local storage di gcc?
+	https://blogs.oracle.com/seongbae/entry/pthread_get_set_specific_vs
+	http://stackoverflow.com/questions/506093/why-is-thread-local-storage-so-slow
+

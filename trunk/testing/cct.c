@@ -1,5 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <asm/unistd.h> // syscall(__NR_gettid)
+#include <sys/types.h> // pid_t
+#include <fcntl.h>
+#include <unistd.h> // getcwd
+#include <limits.h> // PATH_MAX
+#include <string.h>
+
 #include "cct.h"
 
 #if USE_MALLOC==0
@@ -15,8 +23,6 @@ __thread cct_node_t *cct_stack[STACK_MAX_DEPTH];
 __thread cct_node_t *cct_root;
 __thread UINT32      cct_nodes;
 
-// TODO
-extern __thread pid_t hcct_thread_id;
 
 cct_node_t* hcct_get_root()
 {
@@ -88,7 +94,8 @@ void hcct_exit()
     cct_stack_idx--;
 }
 
-void __attribute__((no_instrument_function)) hcct_dump_aux(cct_node_t* root, int indent, unsigned long *nodes)
+void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
+        cct_node_t* root, unsigned long *nodes, cct_node_t* parent)
 {
         if (root==NULL) return;
         
@@ -96,22 +103,52 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(cct_node_t* root, int
         cct_node_t* ptr;
 
 		#if DUMP_TREE==1
-		int i;
-		printf("[thread: %d] ", hcct_thread_id);	
-        for (i=0; i<indent; ++i) printf("-");
-        printf("> address: %lu, call site: %hu, count: %lu\n", root->routine_id, root->call_site, root->counter);
+		// Syntax: v <node id> <parent id> <counter> <context> <call site>
+		fprintf(out, "v %lu %lu %lu %lu %hu\n", (unsigned long)root, (unsigned long)(parent),
+		                                        root->counter, root->routine_id, root->call_site);
         #endif
         
         for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
-                hcct_dump_aux(ptr, indent+1, nodes);
-		
+                hcct_dump_aux(out, ptr, nodes, root);		
 }
 
 void hcct_dump()
 {
-	#if DUMP_STATS==1
+	#if DUMP_STATS==1 || DUMP_TREE==1
 	unsigned long nodes=0;
-	hcct_dump_aux(hcct_get_root(), 1, &nodes);
-	printf("[thread: %d] Total number of nodes: %lu\n", hcct_thread_id, nodes);	
+	FILE* out;
+	pid_t tid=syscall(__NR_gettid);	    
+	
+	    #if DUMP_TREE==1	    
+	    int ds;
+	    char dumpFileName[25]; // up to 20 for PID (CHECK)	    
+	    sprintf(dumpFileName, "%d.log", tid);
+        ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
+        if (ds == -1) exit((printf("[hcct] ERROR: can't create output file %s\n", dumpFileName), 1));
+        out = fdopen(ds, "w");    
+	    
+	    char *path = malloc(PATH_MAX);
+        readlink("/proc/self/exe", path, PATH_MAX);                    
+	    char* cwd=getcwd(NULL, 0);
+	    
+	    // c <tool>
+	    // c <command> <process/thread id> <working directory>
+	    fprintf(out, "c cct\n");	    
+	    fprintf(out, "c %s %d %s\n", path+strlen(cwd), tid, cwd);
+	    
+	    free(path);
+	    free(cwd);
+	    #endif
+	
+	hcct_dump_aux(out, hcct_get_root(), &nodes, NULL);
+	
+	    #if DUMP_TREE==1
+	    fprintf(out, "p %lu\n", nodes); // for a sanity check
+	    #endif
+	    
+	    #if DUMP_STATS==1
+	    printf("[thread: %d] Total number of nodes: %lu\n", tid, nodes);		
+        #endif
 	#endif
+	
 }
