@@ -1,19 +1,22 @@
+Main tasks
 - static bursting con shadow stack
 - SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
-- cosa che diceva Emilio su perl e SPEC
-- sistemare cavolata su path/cwd
 - addr2line e risoluzione indirizzi
+- tool separato di analisi
+
+Other stuff
+- shared libraries... extern? dl_(???)?
+- cosa che diceva Emilio su perl e SPEC
 - discorso livello ottimizzazioni compilatore
 - cose pthread che diceva Emilio per valgrind
 - fpic per shared libraries???
-- tool separato di analisi
-- rivedere struttura funzioni
-- sistemare porcherie headers
-- gestire le fork
+- sistemare porcherie headers e nomi funzioni
 - gestire atexit? abort??
-- shared libraries... extern? dl_(???)?
-- controllo sui valori di ritorno malloc ??
-- sperimentare alternative a thread local storage di gcc?
+- qualche controllo sui valori di ritorno
+- gestire le fork
+	Dovrebbe essere fatto in automatico, visto che ho PID/TID nel nome file output
+	Non può gestire le exec... dovrei fare dump a quel punto, facendo wrap come per pthread? Mah
+- sperimentare alternative a thread local storage di gcc
+	In realtà TLS sembra più efficiente rispetto alle key di pthread
 	https://blogs.oracle.com/seongbae/entry/pthread_get_set_specific_vs
 	http://stackoverflow.com/questions/506093/why-is-thread-local-storage-so-slow
-

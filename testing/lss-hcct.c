@@ -5,8 +5,13 @@
 #include <sys/types.h> // pid_t
 #include <fcntl.h>
 #include <unistd.h> // getcwd
-#include <limits.h> // PATH_MAX
 #include <string.h>
+
+// I cannot access argv[0] otherwise... I guess
+#define _GNU_SOURCE
+#include <errno.h>
+extern char *program_invocation_name;
+extern char *program_invocation_short_name;
 
 #include "allocator/pool.h"
 #include "lss-hcct.h"
@@ -388,22 +393,21 @@ void hcct_dump()
 	
 	    #if DUMP_TREE==1
 	    int ds;
-	    char dumpFileName[25]; // up to 20 for PID (CHECK)	    
-	    sprintf(dumpFileName, "%d.log", tid);
+	    // up to 10 for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
+	    char *dumpFileName=malloc(strlen(program_invocation_short_name)+16); // suffix: -PID.log\0
+	    sprintf(dumpFileName, "%s-%d.log", program_invocation_short_name, tid);
         ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
         if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
         out = fdopen(ds, "w");    
-	    
-	    char *path = malloc(PATH_MAX);
-        readlink("/proc/self/exe", path, PATH_MAX);                    
+
 	    char* cwd=getcwd(NULL, 0);
-	    
+	    	    	    
 	    // c <tool> [<epsilon> <phi>]
 	    // c <command> <process/thread id> <working directory>
 	    fprintf(out, "c lss-hcct %lu %lu\n", epsilon, phi);	    
-	    fprintf(out, "c %s %d %s\n", path+strlen(cwd), tid, cwd);
+	    fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);
 	    
-	    free(path);
+	    free(dumpFileName);
 	    free(cwd);
 	    #endif
 	
