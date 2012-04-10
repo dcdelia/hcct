@@ -1,3 +1,6 @@
+#ifndef __LSS__
+#define __LSS__
+
 #include "common.h"
 #include "allocator/pool.h"
 
@@ -28,3 +31,9 @@ void hcct_exit() __attribute__((no_instrument_function));
 void hcct_dump() __attribute__((no_instrument_function));
 
 lss_hcct_node_t* hcct_get_root() __attribute__((no_instrument_function));
+
+#if BURSTING==1
+void hcct_align() __attribute__((no_instrument_function));
+#endif
+
+#endif
