@@ -4,7 +4,8 @@ CC  =		gcc $(OPT_LEVEL)
 WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
-all:	libs test
+all:	libs test burst
+
 burst:	libs-burst test-burst
 
 libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h allocator/pool.c allocator/pool.h
@@ -27,9 +28,9 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h alloca
 		@mkdir -p libs
 		@mv *.so libs/
 		@rm -f *.o
-		@echo "\n====================================================="
-		@echo "Remember to copy the libraries from libs/ to /usr/lib"
-		@echo "=====================================================\n"
+		@echo "\n============================================================="
+		@echo "Remember to copy/symlink the libraries from libs/ to /usr/lib"
+		@echo "=============================================================\n"
 
 test:	Makefile example.c
 		@mkdir -p bin
@@ -51,7 +52,10 @@ libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h 
 		$(CC) -shared lss-hcct.o core_profiler_bursting.o pool.o -o libhcct_lss_burst.so -lrt $(WRAP)
 		@mkdir -p libs
 		@mv *.so libs/
-		@rm -f *.o		
+		@rm -f *.o
+		@echo "\n============================================================="
+		@echo "Remember to copy/symlink the libraries from libs/ to /usr/lib"
+		@echo "=============================================================\n"		
 		
 test-burst:	Makefile example.c
 		@mkdir -p bin

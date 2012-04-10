@@ -1,0 +1,36 @@
+Qualche breve nota :)
+
+Passaggio parametri tramite variabili di ambiente (defaults in common.h)
+EPSILON=xxx PHI=xxx SINTVL=xxx BLENGTH=xxx <programma da analizzare>
+Timer ha granularità >= 1 nanosecondo. 
+
+Per compilare un programma con una delle librerie hcct:
+
+CFLAGS = -finstrument-functions -lpthread -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
+LDFLAGS = -L<path_to_libs> -lhcct_lss_burst
+
+Viene fatto il dump dell'albero in un file di log. Un dump per thread, formato simile a DIMACS.
+Static bursting implementato con clock_nanosleep (forse migliore di nanosleep) lanciato da un thread.
+Ho provato altre strade (es. POSIX timers) ma non c'è verso. Alta precisione attraverso timer del kernel.
+Shadow stack è molto veloce (appena due decimi di secondo in più su una esecuzione di 17s circa).
+
+Librerie generate: 
+    libhcct_cct_burst.so   libhcct_empty_burst.so  libhcct_lss.so
+    libhcct_cct_malloc.so  libhcct_empty.so
+    libhcct_cct.so         libhcct_lss_burst.so
+
+Test dsp
+- target del make: instr
+- script: hcct_test.txt
+
+Binari dsp generati:
+    dsp      dsp-cct-burst   dsp-empty        dsp-gprof  dsp-lss-burst
+    dsp-cct  dsp-cct_malloc  dsp-empty-burst  dsp-lss
+    
+Sintassi file dump (visita in ordine dell'albero):
+    c <tool> [<epsilon> <phi>] [<sampling_interval> <burst_length>]
+    c <command> <process/thread id> <working directory>
+    [...]
+    v <node id> <parent id> <counter> <routine_id> <call_site>
+    [...]
+    p <nodes>

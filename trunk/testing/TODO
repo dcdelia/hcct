@@ -11,6 +11,7 @@ Cose minori
 - controllare equivalenza metodi di stack walking
 - sistemare printf di warning (standard error magari)
 - rivedere uso di extern
+- controllare estrazione bit call site
 - sistemare pthread_cancel async http://linux.die.net/man/3/pthread_cancel
 - pthread_cancel da intercettare?!?
 - clock_nanosleep vs nanosleep - quale usa hrtimer? quale è migliore?
