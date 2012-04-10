@@ -2,10 +2,6 @@
 #                           Dynamic all-pairs shortest paths experimental package (dsp-1.0)
 #                           Makefile (c) 2002-2003 Camil Demetrescu
 #                           All rights reserved.
-#                           Last changed:   $Date: 2010/11/08 11:58:21 $
-#                           Changed by:     $Author: demetres $
-#                           Revision:       $Revision: 1.3 $
-
 #                           -------------------------------------
 
 #                           -------------------------------------
@@ -16,13 +12,6 @@ C  =                        gcc -I$(LL_PATH)include -Iinclude -I../include
 LL =                        $(LL_PATH)src/core/common/*.c $(LL_PATH)src/core/posix/*.c
 OPTS_STD =					-lm
 OPTS_INSTR =				$(OPTS_STD) -finstrument-functions -lpthread -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
-
-## SENZA USARE LE LIBRERIE (VECCHIO)
-#OPTS_INSTR =				-lm -finstrument-functions -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit -lpthread
-#CCT_FILES =					../../cct.c ../../core_profiler.c ../../allocator/pool.c
-#LSS_HCCT_FILES = 			../../lss-hcct.c ../../core_profiler.c ../../allocator/pool.c
-#EMPTY_FILES = 				../../empty.c ../../core_profiler.c
-# COMANDO: cd bin; $(C) -o dsp-lss $(LL) ../src/*.c $(LSS_HCCT_FILES) $(OPTS_INSTR)
 
 #                           -------------------------------------
 #                           Rules

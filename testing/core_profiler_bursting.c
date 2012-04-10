@@ -1,7 +1,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-//~ #include <signal.h>
 #include <time.h>
 
 #include <asm/unistd.h> // syscall(__NR_gettid)

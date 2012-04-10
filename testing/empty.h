@@ -1,3 +1,6 @@
+#ifndef __EMPTY__
+#define __EMPTY__
+
 #include "common.h"
 
 int hcct_getenv() __attribute__((no_instrument_function));
@@ -11,3 +14,5 @@ void hcct_align() __attribute__((no_instrument_function));
 #endif
 
 void* hcct_get_root() __attribute__((no_instrument_function));
+
+#endif

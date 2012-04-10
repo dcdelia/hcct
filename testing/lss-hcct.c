@@ -449,7 +449,7 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out, lss_hcct_n
         lss_hcct_node_t* ptr;
 
 		#if DUMP_TREE==1
-		// Syntax: v <node id> <parent id> <counter> <context> <call site>
+		// Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
 		fprintf(out, "v %lu %lu %lu %lu %hu\n", (unsigned long)root, (unsigned long)(root->parent),
 		                                        root->counter, root->routine_id, root->call_site);
         #endif
