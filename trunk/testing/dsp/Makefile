@@ -38,7 +38,8 @@ instr:
 	                        cd bin; $(C) -o dsp-cct $(LL) ../src/*.c -L../../libs -lhcct_cct $(OPTS_INSTR)
 	                        cd bin; $(C) -o dsp-cct_malloc $(LL) ../src/*.c -L../../libs -lhcct_cct_malloc $(OPTS_INSTR)
 	                        cd bin; $(C) -o dsp-lss $(LL) ../src/*.c -L../../libs -lhcct_lss $(OPTS_INSTR)
-	                        cd bin; $(C) -o dsp-empty $(LL) ../src/*.c -L../../libs -lhcct_empty $(OPTS_INSTR)	                        
+	                        cd bin; $(C) -o dsp-empty $(LL) ../src/*.c -L../../libs -lhcct_empty $(OPTS_INSTR)
+	                        cd bin; $(C) -o dsp-empty-burst $(LL) ../src/*.c -L../../libs -lhcct_empty_burst $(OPTS_INSTR)
 
 gprof:
 	                        cd bin; $(C) -pg -o dsp-gprof $(LL) ../src/*.c $(OPTS_STD)

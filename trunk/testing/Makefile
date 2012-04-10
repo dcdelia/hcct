@@ -5,6 +5,7 @@ WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
 all:	libs test
+burst:	libs-burst test-burst
 
 libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h allocator/pool.c allocator/pool.h
 		$(CC) -c cct.c
@@ -36,6 +37,19 @@ test:	Makefile example.c
 		$(CC) -o bin/test_cct example.c -L./libs -lhcct_cct $(INSTR)
 		$(CC) -o bin/test_cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
 		$(CC) -o bin/test_lss example.c -L./libs -lhcct_lss $(INSTR)
+
+libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h allocator/pool.c allocator/pool.h
+		$(CC) -c empty.c
+		$(CC) -c core_profiler_bursting.c -DPROFILER_EMPTY
+		$(CC) -shared empty.o core_profiler_bursting.o -o libhcct_empty_burst.so -lrt $(WRAP)
+		@mkdir -p libs
+		@mv *.so libs/
+		@rm -f *.o		
+		
+test-burst:	Makefile example.c
+		@mkdir -p bin
+		$(CC) -o bin/test_empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)		
+
 
 clean:	
 		rm -rf libs bin

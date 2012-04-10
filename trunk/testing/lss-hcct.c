@@ -7,7 +7,6 @@
 #include <unistd.h> // getcwd
 #include <string.h>
 
-// I cannot access argv[0] otherwise... I guess
 #define _GNU_SOURCE
 #include <errno.h>
 extern char *program_invocation_name;

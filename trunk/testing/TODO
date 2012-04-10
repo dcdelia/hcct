@@ -5,6 +5,8 @@ Main tasks
 - tool separato di analisi
 
 Other stuff
+- gestore terminazione per timer thread
+- clock_nanosleep vs nanosleep - quale usa hrtimer? quale è migliore?
 - shared libraries... extern? dl_(???)?
 - cosa che diceva Emilio su perl e SPEC
 - discorso livello ottimizzazioni compilatore
