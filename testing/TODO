@@ -5,6 +5,7 @@ Main tasks
 - tool separato di analisi
 
 Other stuff
+- sistemare printf di warning (standard error magari)
 - rivedere uso di extern
 - sistemare pthread_cancel async http://linux.die.net/man/3/pthread_cancel
 - pthread_cancel da intercettare?!?
@@ -16,6 +17,7 @@ Other stuff
 - sistemare porcherie headers e nomi funzioni
 - gestire atexit? abort??
 - discorso livello ottimizzazioni compilatore
+- si può eliminare stack mantenuta da hcct e scorrere i puntatori all'indietro? forse non ne vale la pena
 - gestire le fork
 	Dovrebbe essere fatto in automatico, visto che ho PID/TID nel nome file output
 	Non può gestire le exec... dovrei fare dump a quel punto, facendo wrap come per pthread? Mah
