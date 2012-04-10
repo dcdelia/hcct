@@ -5,16 +5,17 @@ Main tasks
 - tool separato di analisi
 
 Other stuff
-- gestore terminazione per timer thread
+- rivedere uso di extern
+- sistemare pthread_cancel async http://linux.die.net/man/3/pthread_cancel
+- pthread_cancel da intercettare?!?
 - clock_nanosleep vs nanosleep - quale usa hrtimer? quale è migliore?
 - shared libraries... extern? dl_(???)?
 - cosa che diceva Emilio su perl e SPEC
-- discorso livello ottimizzazioni compilatore
 - cose pthread che diceva Emilio per valgrind
 - fpic per shared libraries???
 - sistemare porcherie headers e nomi funzioni
 - gestire atexit? abort??
-- qualche controllo sui valori di ritorno
+- discorso livello ottimizzazioni compilatore
 - gestire le fork
 	Dovrebbe essere fatto in automatico, visto che ho PID/TID nel nome file output
 	Non può gestire le exec... dovrei fare dump a quel punto, facendo wrap come per pthread? Mah

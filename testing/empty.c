@@ -21,3 +21,8 @@ void hcct_exit() {
 
 void hcct_dump() {
 }
+
+#if BURSTING==1
+void hcct_align() {
+}
+#endif
