@@ -78,18 +78,45 @@ int hcct_init()
 }
 
 #if BURSTING==1
-void hcct_align() {
-    // Nota: come in burst.c (PLDI version) chiamo hcct_enter lungo tutto il ramo
-    // Aspetto da controllare, per ora lo lascio così
-    
+void hcct_align() {        
     // reset CCT internal stack
     cct_stack_idx=0;
     
+    #if 0
+    // Nota: come in burst.c (PLDI version) chiamo hcct_enter lungo tutto il ramo
+    // Aspetto da controllare, perché sballa tutti i contatori lungo i rami
     // scan shadow stack from root to current routine (shadow_stack_idx-1)
     int i;
     for (i=0; i<shadow_stack_idx; ++i)
         hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site);
     aligned=1;
+    #else
+    // Uses hcct_enter only on actual routine and on nodes that have to be created along the path
+    cct_node_t *parent, *node;
+    int i;
+    
+    // scan shadow stack
+    for (i=0; i<shadow_stack_idx-1;) {
+        parent=cct_stack[cct_stack_idx++];    
+        for (node=parent->first_child; node!=NULL; node=node->next_sibling)
+            if (node->routine_id == shadow_stack[i].routine_id &&
+                node->call_site == shadow_stack[i].call_site) break;
+        if (node!=NULL) {
+            // No need to update counter here
+            cct_stack[cct_stack_idx]=node;
+            ++i;            
+        } else {
+            // I have to create additional nodes in the next for cycle
+            --cct_stack_idx;
+            break;            
+        }        
+    }
+    
+    // update counters only for current routine and for new nodes created along the path
+    for (; i<shadow_stack_idx; ++i)
+        hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site);
+    aligned=1;
+    #endif
 }
 #endif
 

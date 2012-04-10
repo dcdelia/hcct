@@ -63,18 +63,39 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         printf("[profiler] program start - tid %d\n", syscall(__NR_gettid));
         #endif
         
-        // Initializing timer thread (granularity: nanoseconds)
+        // Initializing timer thread parameters (granularity: nanoseconds)
         burst_on=1;
-        sampling_interval=10*1000000;
-        burst_length=1*1000000;
+        
+        char* value;
+        value=getenv("SINTVL");
+        if (value == NULL || value[0]=='\0')
+            sampling_interval=SAMPLING_INTERVAL;
+        else {
+            sampling_interval=strtoul(value, NULL, 0);
+            if (sampling_interval==0) {
+                sampling_interval=SAMPLING_INTERVAL;
+                printf("[profiler] WARNING: invalid value specified for SINTVL, using default (%lu) instead\n", sampling_interval);
+            }
+        }
+        
+        value=getenv("BLENGTH");
+        if (value == NULL || value[0]=='\0')
+            burst_length=BURST_LENGTH;
+        else {
+            burst_length=strtoul(value, NULL, 0);
+            if (burst_length==0) {
+                burst_length=BURST_LENGTH;
+                printf("[profiler] WARNING: invalid value specified for BLENGTH, using default (%lu) instead\n", burst_length);
+            }
+        }
 
         // conviene passare burston come parametro?
         if (__real_pthread_create(&timerThreadID, NULL, timerThread, NULL)) {
             printf("[profiler] error creating timer thread - exiting!\n");
             exit(1);
         }        
-                        
-        // Initializing user parameters
+        
+        // Initializing analysis algorithm parameters
         if (hcct_getenv()!=0) {
             printf("[profiler] error getting parameters - exiting...\n");
             exit(1);   
