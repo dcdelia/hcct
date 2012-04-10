@@ -1,10 +1,14 @@
-Main tasks
-- static bursting con shadow stack
+---------------
+Cose principali
+---------------
 - SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
 - addr2line e risoluzione indirizzi
 - tool separato di analisi
 
-Other stuff
+-----------
+Cose minori
+-----------
+- controllare equivalenza metodi di stack walking
 - sistemare printf di warning (standard error magari)
 - rivedere uso di extern
 - sistemare pthread_cancel async http://linux.die.net/man/3/pthread_cancel

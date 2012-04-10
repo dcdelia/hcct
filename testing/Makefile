@@ -46,6 +46,9 @@ libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h 
 		$(CC) -c cct.c -DBURSTING
 		$(CC) -c core_profiler_bursting.c -DPROFILER_CCT		
 		$(CC) -shared cct.o core_profiler_bursting.o pool.o -o libhcct_cct_burst.so -lrt $(WRAP)
+		$(CC) -c lss-hcct.c -DBURSTING
+		$(CC) -c core_profiler_bursting.c
+		$(CC) -shared lss-hcct.o core_profiler_bursting.o pool.o -o libhcct_lss_burst.so -lrt $(WRAP)
 		@mkdir -p libs
 		@mv *.so libs/
 		@rm -f *.o		
@@ -54,6 +57,7 @@ test-burst:	Makefile example.c
 		@mkdir -p bin
 		$(CC) -o bin/test_empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
 		$(CC) -o bin/test_cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
+		$(CC) -o bin/test_lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
 
 clean:	
 		rm -rf libs bin

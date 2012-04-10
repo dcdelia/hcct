@@ -13,6 +13,7 @@
 #if BURSTING==1
 #define SAMPLING_INTERVAL   10*1000000
 #define BURST_LENGTH        1*1000000
+#define UPDATE_ALONG_TREE   0
 typedef struct hcct_stack_node_s hcct_stack_node_t;
 struct hcct_stack_node_s {
     UINT32           routine_id;    

@@ -28,6 +28,8 @@ __thread cct_node_t *cct_root;
 __thread UINT32      cct_nodes;
 
 #if BURSTING
+extern unsigned long    sampling_interval;
+extern unsigned long    burst_length;
 extern unsigned short   burst_on;   // enable or disable bursting
 extern __thread int     aligned;
 
@@ -82,7 +84,7 @@ void hcct_align() {
     // reset CCT internal stack
     cct_stack_idx=0;
     
-    #if 0
+    #if UPDATE_ALONG_TREE==1
     // Nota: come in burst.c (PLDI version) chiamo hcct_enter lungo tutto il ramo
     // Aspetto da controllare, perché sballa tutti i contatori lungo i rami
     // scan shadow stack from root to current routine (shadow_stack_idx-1)
@@ -96,6 +98,7 @@ void hcct_align() {
     int i;
     
     // scan shadow stack
+    #if 0
     for (i=0; i<shadow_stack_idx-1;) {
         parent=cct_stack[cct_stack_idx++];    
         for (node=parent->first_child; node!=NULL; node=node->next_sibling)
@@ -111,10 +114,47 @@ void hcct_align() {
             break;            
         }        
     }
+    #else
+    // Ottimizzazione (???) - scambio puntatori node e parent invece di accedere a cct_stack    
+    parent=cct_stack[cct_stack_idx];
+    for (i=0; i<shadow_stack_idx-1;) {
+        for (node=parent->first_child; node!=NULL; node=node->next_sibling)
+            if (node->routine_id == shadow_stack[i].routine_id &&
+                node->call_site == shadow_stack[i].call_site) break;
+        if (node!=NULL) {
+            // No need to update counter here
+            cct_stack[++cct_stack_idx]=node;
+            parent=node;
+            ++i;            
+        } else {
+            // I have to create additional nodes in the next for cycle            
+            break;            
+        }        
+    }
+    
+    //~ // Variante
+    //~ node=cct_stack[cct_stack_idx];
+    //~ for (i=0; i<shadow_stack_idx-1;) {
+        //~ parent=node;    
+        //~ for (node=parent->first_child; node!=NULL; node=node->next_sibling)
+            //~ if (node->routine_id == shadow_stack[i].routine_id &&
+                //~ node->call_site == shadow_stack[i].call_site) break;
+        //~ if (node!=NULL) {
+            //~ // No need to update counter here
+            //~ cct_stack[++cct_stack_idx]=node;
+            //~ ++i;            
+        //~ } else {
+            //~ // I have to create additional nodes in the next for cycle            
+            //~ break;            
+        //~ }        
+    //~ }
+    
+    #endif
     
     // update counters only for current routine and for new nodes created along the path
     for (; i<shadow_stack_idx; ++i)
         hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site);
+    
     aligned=1;
     #endif
 }
@@ -191,9 +231,15 @@ void hcct_dump()
 	    
 	    char* cwd=getcwd(NULL, 0);
 	    
-	    // c <tool>
+	    #if BURSTING
+	    // c <tool> <sampling_interval> <burst_length>	    
+	    fprintf(out, "c cct-burst %lu %lu\n", sampling_interval, burst_length);	    
+	    #else
+        // c <tool>
+	    fprintf(out, "c cct\n");	    	    
+	    #endif
+	    
 	    // c <command> <process/thread id> <working directory>
-	    fprintf(out, "c cct\n");	    
 	    fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);
 	    
 	    free(dumpFileName);
