@@ -39,17 +39,21 @@ test:	Makefile example.c
 		$(CC) -o bin/test_lss example.c -L./libs -lhcct_lss $(INSTR)
 
 libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h allocator/pool.c allocator/pool.h
-		$(CC) -c empty.c
+		$(CC) -c allocator/pool.c
+		$(CC) -c empty.c -DBURSTING
 		$(CC) -c core_profiler_bursting.c -DPROFILER_EMPTY
 		$(CC) -shared empty.o core_profiler_bursting.o -o libhcct_empty_burst.so -lrt $(WRAP)
+		$(CC) -c cct.c -DBURSTING
+		$(CC) -c core_profiler_bursting.c -DPROFILER_CCT		
+		$(CC) -shared cct.o core_profiler_bursting.o pool.o -o libhcct_cct_burst.so -lrt $(WRAP)
 		@mkdir -p libs
 		@mv *.so libs/
 		@rm -f *.o		
 		
 test-burst:	Makefile example.c
 		@mkdir -p bin
-		$(CC) -o bin/test_empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)		
-
+		$(CC) -o bin/test_empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
+		$(CC) -o bin/test_cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
 
 clean:	
 		rm -rf libs bin

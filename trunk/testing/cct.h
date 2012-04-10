@@ -1,4 +1,9 @@
+#ifndef __CCT__
+#define __CCT__
+
 #include "common.h"
+
+// Sistemare qui
 #ifndef USE_MALLOC
 #define USE_MALLOC 0
 #else
@@ -21,3 +26,9 @@ void hcct_exit() __attribute__((no_instrument_function));
 void hcct_dump() __attribute__((no_instrument_function));
 
 cct_node_t* hcct_get_root() __attribute__((no_instrument_function));
+
+#if BURSTING==1
+void hcct_align() __attribute__((no_instrument_function));
+#endif
+
+#endif

@@ -1,7 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
+//~ #include <signal.h>
 #include <time.h>
 
 #include <asm/unistd.h> // syscall(__NR_gettid)
@@ -13,7 +13,13 @@ unsigned short  burst_on;   // enable or disable bursting
 unsigned long   sampling_interval;
 unsigned long   burst_length;
 
-unsigned long   no_burst_length; // not needed anymore...??
+#define BURSTING 1
+#include "common.h"
+
+// shadow stack - legal values from 0 up to shadow_stack_idx-1
+__thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
+__thread int                shadow_stack_idx; // PER ORA USO INT PER VERIFICARE SE SUCCEDONO COSE STRANE - DA SISTEMARE
+__thread int                aligned;
 
 
 // Eliminare questa porcheria!!! :)
@@ -39,18 +45,15 @@ void __attribute__((no_instrument_function)) timerThread(void* arg)
     while(1)
     {
         if (burst_on!=0) {
-            //printf("Disabling bursting\n");
+            //~ printf("Disabling bursting\n");
             burst_on=0;
             clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &disabled, NULL);
         } else {
-            //printf("Enabling bursting\n");
+            //~ printf("Enabling bursting\n");
             burst_on=1;
             clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &enabled, NULL);
         }
     }
-    
-    // TODO: inserire gestore segnale terminazione :)
-    
 }
  
 // execute before main
@@ -60,7 +63,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         printf("[profiler] program start - tid %d\n", syscall(__NR_gettid));
         #endif
         
-        // Initializing timer (granularity: nanoseconds)
+        // Initializing timer thread (granularity: nanoseconds)
         burst_on=1;
         sampling_interval=10*1000000;
         burst_length=1*1000000;
@@ -70,14 +73,16 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
             printf("[profiler] error creating timer thread - exiting!\n");
             exit(1);
         }        
-        
-        // Create a new thread and run clock_nanosleep inside it
-                
+                        
         // Initializing user parameters
         if (hcct_getenv()!=0) {
             printf("[profiler] error getting parameters - exiting...\n");
             exit(1);   
         }
+        
+        // Initialize shadow stack
+        shadow_stack_idx=0;
+        aligned=1;
         
         // Initializing hcct module        
         if (hcct_init()==-1) {
@@ -89,14 +94,12 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 // execute after termination
 void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 {
-		// Shut down timer
-		#if 0
-		if (timer_delete(global_timer))
-		    printf("[profiler] WARNING: timer_delete error\n");
-        #else
-        if (pthread_kill(timerThreadID, SIGTERM))
-            printf("[profiler] WARNING: could not kill timer thread\n");
-        #endif
+		// Close timer thread
+		#if SHOW_MESSAGES==1
+        printf("[profiler] closing timer thread...\n");
+        #endif        
+        if (pthread_cancel(timerThreadID))
+            printf("[profiler] WARNING: could not close timer thread\n");
 
 		#if SHOW_MESSAGES==1
         printf("[profiler] program exit - tid %d\n", syscall(__NR_gettid));
@@ -109,19 +112,39 @@ void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
 	unsigned short cs= (unsigned short)(((unsigned long)call_site)&(0xFFFF)); // PLEASE CHECK THIS
- 
+	
 	// Nel TraceWriter veniva fatto così
 	/*typeByte = RTN_ENTER_CS;
 	// 2 bytes for call site (16 LSBs)
 	myWrite(&ip, sizeof(ADDRINT)/2, 1, tr);*/
 	
-	hcct_enter((unsigned long)this_fn, cs);
+	// Shadow stack
+	shadow_stack[shadow_stack_idx].routine_id=(unsigned long)this_fn;
+	shadow_stack[shadow_stack_idx++].call_site=cs;
+	
+	if (burst_on==0) aligned=0;
+	else {
+        if (aligned==0) hcct_align();
+        else hcct_enter((unsigned long)this_fn, cs);
+    }
 }
 
 // Routine exit
 void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_fn, void *call_site)
 {	
-        hcct_exit();
+    // Shadow stack
+    --shadow_stack_idx;
+        
+    //~ if (--shadow_stack_idx<0) {
+    //~ printf("FATAL ERROR: stack index < 0\n");
+    //~ exit(1);
+    //~ }        
+                
+    if (burst_on==0) aligned=0;
+	else {
+        // Aligning is not needed (no info provided for tree update)
+        if (aligned==1) hcct_exit();
+    }                                        
 }
 
 // wrap pthread_exit()
@@ -140,6 +163,10 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 // handles thread termination made without pthread_exit
 void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
 {                
+        // Initialize shadow stack
+        shadow_stack_idx=0;
+        aligned=1;
+        
         hcct_init();
 
         // Retrieve original routine address and argument        

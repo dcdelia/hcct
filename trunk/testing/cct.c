@@ -27,6 +27,14 @@ __thread cct_node_t *cct_stack[STACK_MAX_DEPTH];
 __thread cct_node_t *cct_root;
 __thread UINT32      cct_nodes;
 
+#if BURSTING
+extern unsigned short   burst_on;   // enable or disable bursting
+extern __thread int     aligned;
+
+// legal values from 0 up to shadow_stack_idx-1
+extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
+extern __thread int                shadow_stack_idx; 
+#endif
 
 int hcct_getenv()
 {
@@ -69,9 +77,25 @@ int hcct_init()
     return 0;
 }
 
+#if BURSTING==1
+void hcct_align() {
+    // Nota: come in burst.c (PLDI version) chiamo hcct_enter lungo tutto il ramo
+    // Aspetto da controllare, per ora lo lascio così
+    
+    // reset CCT internal stack
+    cct_stack_idx=0;
+    
+    // scan shadow stack from root to current routine (shadow_stack_idx-1)
+    int i;
+    for (i=0; i<shadow_stack_idx; ++i)
+        hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site);
+    aligned=1;
+}
+#endif
+
+
 void hcct_enter(UINT32 routine_id, UINT16 call_site)
 {
-
     cct_node_t *parent=cct_stack[cct_stack_idx++];
     cct_node_t *node;
     for (node=parent->first_child; node!=NULL; node=node->next_sibling)
