@@ -3,11 +3,12 @@ Cose principali
 ---------------
 - SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
 - addr2line e risoluzione indirizzi
-- tool separato di analisi
+- riprendere metrics.c della versione PLDI
 
 -----------
 Cose minori
 -----------
+- cut finale SS con phi
 - controllare equivalenza metodi di stack walking
 - sistemare printf di warning (standard error magari)
 - rivedere uso di extern
