@@ -7,7 +7,7 @@ Timer ha granularità >= 1 nanosecondo.
 Per compilare un programma con una delle librerie hcct:
 
 CFLAGS = -finstrument-functions -lpthread -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
-LDFLAGS = -L<path_to_libs> -lhcct_lss_burst
+LDFLAGS = -L<path_to_libs> -lhcct_lss_burst (DA CONTROLLARE)
 
 Viene fatto il dump dell'albero in un file di log. Un dump per thread, formato simile a DIMACS.
 Static bursting implementato con clock_nanosleep (forse migliore di nanosleep) lanciato da un thread.
