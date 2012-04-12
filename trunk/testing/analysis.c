@@ -99,9 +99,9 @@ hcct_tree_t* createTree(FILE* logfile) {
     }
     
     tree_stack[0].node=root;    
-    tree_stack[0].id=strtoul(&buf[2], &s, 0); // node_id
+    tree_stack[0].id=strtoul(&buf[2], &s, 16); // node_id
     s++; // skip " " character
-    if (strtoul(s, &s, 0)!=0) {
+    if (strtoul(s, &s, 16)!=0) { // parent_id should be 0
             printf("Error: root node cannot have a parent node!\n");
             exit(1);
     }
@@ -111,9 +111,9 @@ hcct_tree_t* createTree(FILE* logfile) {
     root->next_sibling=NULL;
     root->counter=strtoul(s, &s, 0);    
     s++;
-    root->routine_id=strtoul(s, &s, 0);
+    root->routine_id=strtoul(s, &s, 16);
     s++;
-    root->call_site=(unsigned short)strtoul(s, &s, 0);
+    root->call_site=(unsigned short)strtoul(s, &s, 16);
     if (root->counter!=1 || root->routine_id!=0 || root->call_site!=0) {
             printf("Error: there's something strange in root node data (counter, routine_id or call_site)!\n");
             exit(1);
@@ -132,15 +132,15 @@ hcct_tree_t* createTree(FILE* logfile) {
         }
         
         node=malloc(sizeof(hcct_node_t));
-        node_id=strtoul(&buf[2], &s, 0);
+        node_id=strtoul(&buf[2], &s, 16);
         s++;    
-        parent_id=strtoul(s, &s, 0);
+        parent_id=strtoul(s, &s, 16);
         s++;
         node->counter=strtoul(s, &s, 0);
         s++;
-        node->routine_id=strtoul(s, &s, 0);
+        node->routine_id=strtoul(s, &s, 16);
         s++;
-        node->call_site=(unsigned short)strtoul(s, &s, 0);
+        node->call_site=(unsigned short)strtoul(s, &s, 16);
         
         // Attach node to the tree
         while (tree_stack[stack_idx].id!=parent_id && stack_idx>=0)

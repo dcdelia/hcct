@@ -34,3 +34,10 @@ Sintassi file dump (visita in ordine dell'albero):
     v <node id> <parent id> <counter> <routine_id> <call_site>
     [...]
     p <nodes>
+
+Tutti gli indirizzi sono specificati in formato esadecimale    
+    
+    
+Risoluzione indirizzi:
+    Compilare il programma con -g
+    Usare addr2line su routine_id
