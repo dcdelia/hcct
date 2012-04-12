@@ -3,31 +3,36 @@ Cose principali
 ---------------
 - SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
 - addr2line e risoluzione indirizzi
-- riprendere metrics.c della versione PLDI
+- tracewriter per profiler gcc (così da poter riutilizzare tool PLDI)
 
 -----------
 Cose minori
 -----------
 - cut finale SS con phi
 - controllare equivalenza metodi di stack walking
-- sistemare printf di warning (standard error magari)
+- sistemare printf di warning/errore (standard error?)
 - rivedere uso di extern
 - controllare estrazione bit call site
+- pthread_cancel
+	gestire async per timer thread http://linux.die.net/man/3/pthread_cancel
+	bisogna fare wrap o va bene buttare i dati?
+- cose che diceva Emilio
+	- problemi SPEC e perl
+	- pthread in valgrind
 - sistemare pthread_cancel async http://linux.die.net/man/3/pthread_cancel
-- pthread_cancel da intercettare?!?
-- clock_nanosleep vs nanosleep - quale usa hrtimer? quale è migliore?
 - shared libraries... extern? dl_(???)?
-- cosa che diceva Emilio su perl e SPEC
-- cose pthread che diceva Emilio per valgrind
 - fpic per shared libraries???
-- sistemare porcherie headers e nomi funzioni
+- sistemare nomi variabili???
 - gestire atexit? abort??
 - discorso livello ottimizzazioni compilatore
 - si può eliminare stack mantenuta da hcct e scorrere i puntatori all'indietro? forse non ne vale la pena
-- puntatori per i 64 bit??
+- adattare ai 64 bit
 - gestire le fork
 	Dovrebbe essere fatto in automatico, visto che ho PID/TID nel nome file output
-	Non può gestire le exec... dovrei fare dump a quel punto, facendo wrap come per pthread? Mah
+	Non può gestire le exec... dovrei fare dump a quel punto, facendo wrap come per pthread? Mah	
+- clock_nanosleep vs nanosleep - quale usa hrtimer? quale è migliore?
+	Ora anche clock_nanosleep dovrebbe usare hrtimer (Linux 2.6.21+)
+	Clock_nanosleep non usa segnali (credo)
 - sperimentare alternative a thread local storage di gcc
 	In realtà TLS sembra più efficiente rispetto alle key di pthread
 	https://blogs.oracle.com/seongbae/entry/pthread_get_set_specific_vs

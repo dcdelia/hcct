@@ -177,12 +177,10 @@ hcct_tree_t* createTree(FILE* logfile) {
     tree->root=root;
     tree->nodes=nodes;
     
-    printf("Tree has been built!\n");
+    printf("Tree has been built.\n");
     
     return tree;
 }
-
-
 
 void freeTreeAux(hcct_node_t* root) {
     hcct_node_t *ptr;
@@ -195,8 +193,53 @@ void freeTree(hcct_tree_t* tree) {
     if (tree->root!=NULL)
         freeTreeAux(tree->root);
     free(tree);
-    printf("Tree has been deleted from memory!\n");
+    printf("Tree has been deleted from memory.\n");
 }
+
+// ---------------------------------------------------------------------
+//  routines adapted from metrics.c (PLDI version)
+// ---------------------------------------------------------------------
+UINT32 hotNodes(hcct_node_t* root, UINT32 threshold) {
+    UINT32 h=0;
+    hcct_node_t* child;
+    for (child=root->first_child; child!=NULL; child=child->next_sibling)
+        h += hotNodes(child,threshold);
+    if (root->counter >= threshold) {
+            // printf per stampa a video??
+            return h+1; 
+    }
+    else return h;
+}
+
+UINT64 sumCounters(hcct_node_t* root) {
+    UINT64 theSum=(UINT64)root->counter;
+    hcct_node_t* child;
+    for (child=root->first_child; child!=NULL; child=child->next_sibling)
+        theSum += sumCounters(child);
+    return theSum;
+}
+
+UINT32 hottestCounter(hcct_node_t* root) {
+    UINT32 theHottest=root->counter;
+    hcct_node_t* child;
+    for (child=root->first_child; child!=NULL; child=child->next_sibling)  {
+        UINT32 childHottest = hottestCounter(child);
+        if (theHottest<childHottest) theHottest=childHottest;
+    }
+    return theHottest;
+}
+
+UINT32 largerThanHottest(hcct_node_t* root, UINT32 TAU, UINT32 hottest) {
+    UINT32 num=0;
+    hcct_node_t* child;
+    if (root->counter*TAU >= hottest) num++;
+    for (child=root->first_child; child!=NULL; child=child->next_sibling) 
+        num += largerThanHottest(child,TAU,hottest);
+    return num;
+}
+// ---------------------------------------------------------------------
+//  end of routines adapted from metrics.c (PLDI version)
+// ---------------------------------------------------------------------
 
 
 int main(int argc, char* argv[]) {
@@ -212,6 +255,14 @@ int main(int argc, char* argv[]) {
     }
     hcct_tree_t *tree;
     tree=createTree(logfile);
+    UINT32 hot=hotNodes(tree->root, 100);
+    printf("Number of hot nodes (counter>100): %lu\n", hot);
+    UINT64 sum=sumCounters(tree->root);
+    printf("Sum of counters: %llu\n", sum);
+    UINT32 hottest=hottestCounter(tree->root);
+    printf("Hottest counter: %lu\n", hottest);
+    UINT32 closest=largerThanHottest(tree->root, 10, hottest); // TAU=10
+    printf("Hottest nodes for TAU=10: %lu\n", closest);
     fclose(logfile);
     freeTree(tree);
     return 0;
