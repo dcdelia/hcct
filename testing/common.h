@@ -1,6 +1,7 @@
 #ifndef __COMMON__
 #define __COMMON__
 
+#define UINT64 unsigned long long
 #define UINT32 unsigned long
 #define UINT16 unsigned short
 
