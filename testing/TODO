@@ -2,13 +2,13 @@
 Cose principali
 ---------------
 - SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
-- addr2line e risoluzione indirizzi
 - tracewriter per profiler gcc (così da poter riutilizzare tool PLDI)
 
 -----------
 Cose minori
 -----------
-- cut finale SS con phi
+- togliere ritorno a capo finale nei file di log?? aggiungere poi spazio per cct? boh
+- cut finale SS con phi? altrimenti posso togliere phi dai parametri di tool costruzione hcct
 - controllare equivalenza metodi di stack walking
 - sistemare printf di warning/errore (standard error?)
 - rivedere uso di extern
@@ -19,14 +19,21 @@ Cose minori
 - cose che diceva Emilio
 	- problemi SPEC e perl
 	- pthread in valgrind
-- sistemare pthread_cancel async http://linux.die.net/man/3/pthread_cancel
 - shared libraries... extern? dl_(???)?
 - fpic per shared libraries???
-- sistemare nomi variabili???
+- sistemare nomi variabili eventualmente
 - gestire atexit? abort??
 - discorso livello ottimizzazioni compilatore
 - si può eliminare stack mantenuta da hcct e scorrere i puntatori all'indietro? forse non ne vale la pena
 - adattare ai 64 bit
+
+--------------
+Cose abbozzate
+--------------
+- risoluzione indirizzi
+	Al momento funziona usando addr2line su file output e compilando programma con -g
+	Salvando il file /proc/<PID>/maps dovrebbe essere possibile ricavare offset per shared libraries
+	=> potrei aggiungere il contenuto di questo file al dump
 - gestire le fork
 	Dovrebbe essere fatto in automatico, visto che ho PID/TID nel nome file output
 	Non può gestire le exec... dovrei fare dump a quel punto, facendo wrap come per pthread? Mah	
