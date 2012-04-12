@@ -34,6 +34,7 @@ Cose abbozzate
 	Al momento funziona usando addr2line su file output e compilando programma con -g
 	Salvando il file /proc/<PID>/maps dovrebbe essere possibile ricavare offset per shared libraries
 	=> potrei aggiungere il contenuto di questo file al dump
+	Altro possibile approccio: http://ndevilla.free.fr/etrace/
 - gestire le fork
 	Dovrebbe essere fatto in automatico, visto che ho PID/TID nel nome file output
 	Non può gestire le exec... dovrei fare dump a quel punto, facendo wrap come per pthread? Mah	

@@ -5,9 +5,9 @@ WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
 all:	exhaustive burst tools
-		@echo "\n============================================================="
-		@echo "Remember to copy/symlink the libraries from libs/ to /usr/lib"
-		@echo "=============================================================\n"		
+		@echo "\n==============================================================="
+		@echo "Remember to copy/symlink the libraries from libs/ into /usr/lib"
+		@echo "===============================================================\n"		
 
 exhaustive:	libs test
 
