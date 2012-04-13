@@ -112,7 +112,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 }
 
 // execute after termination
-void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
+void __attribute__((destructor, no_instrument_function)) trace_end(void)
 {
 		// Close timer thread
 		#if SHOW_MESSAGES==1
