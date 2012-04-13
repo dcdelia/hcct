@@ -31,6 +31,7 @@ instr:
 	                        cd bin; $(C) -o dsp-empty-burst $(LL) ../src/*.c -L../../libs -lhcct_empty_burst $(OPTS_INSTR)
 	                        cd bin; $(C) -o dsp-cct-burst $(LL) ../src/*.c -L../../libs -lhcct_cct_burst $(OPTS_INSTR)
 	                        cd bin; $(C) -o dsp-lss-burst $(LL) ../src/*.c -L../../libs -lhcct_lss_burst $(OPTS_INSTR)
+	                        cd bin; $(C) -o dsp-tracer $(LL) ../src/*.c -L../../libs -lhcct_tracer $(OPTS_INSTR)
 
 gprof:
 	                        cd bin; $(C) -pg -o dsp-gprof $(LL) ../src/*.c $(OPTS_STD)

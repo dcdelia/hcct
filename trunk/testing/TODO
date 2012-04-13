@@ -2,11 +2,11 @@
 Cose principali
 ---------------
 - SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
-- tracewriter per profiler gcc (così da poter riutilizzare tool PLDI)
 
 -----------
 Cose minori
 -----------
+- dimensioni corrette buffer per tracer
 - togliere ritorno a capo finale nei file di log?? aggiungere poi spazio per cct? boh
 - cut finale SS con phi? altrimenti posso togliere phi dai parametri di tool costruzione hcct
 - controllare equivalenza metodi di stack walking
@@ -38,6 +38,7 @@ Cose abbozzate
 - gestire le fork
 	Dovrebbe essere fatto in automatico, visto che ho PID/TID nel nome file output
 	Non può gestire le exec... dovrei fare dump a quel punto, facendo wrap come per pthread? Mah	
+	tracer non può supportare fork al momento (crea logfile all'inizio: dovrei fare wrap della fork)
 - clock_nanosleep vs nanosleep - quale usa hrtimer? quale è migliore?
 	Ora anche clock_nanosleep dovrebbe usare hrtimer (Linux 2.6.21+)
 	Clock_nanosleep non usa segnali (credo)

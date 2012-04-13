@@ -468,7 +468,7 @@ void hcct_dump()
 	
 	    #if DUMP_TREE==1
 	    int ds;
-	    // up to 10 for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
+	    // up to 10 digits for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
 	    char *dumpFileName=malloc(strlen(program_invocation_short_name)+16); // suffix: -PID.log\0
 	    sprintf(dumpFileName, "%s-%d.log", program_invocation_short_name, tid);
         ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);

@@ -16,7 +16,10 @@ hcct_tree_t* createTree(FILE* logfile) {
     // c <command> <process/thread id> <working directory>
     
     // First row
-    fgets(buf, BUF, logfile); // contiene anche terminatore di riga!
+    if (fgets(buf, BUF, logfile)==NULL) {
+		printf("Error: broken logfile\n");
+		exit(1);
+	}
     s=strtok(buf, " ");
     if (strcmp(s, "c")) {
         printf("Error: wrong format!\n");
@@ -59,16 +62,11 @@ hcct_tree_t* createTree(FILE* logfile) {
                 tree->epsilon, tree->phi, tree->sampling_interval, tree->burst_length);
     }
     
-    //~ // get all left substrings
-    //~ s=strtok(NULL, " ");
-    //~ if (s!=NULL) printf("\nOther parameters:");
-    //~ while (s!=NULL) {
-        //~ printf(" %s", s);
-        //~ s=strtok(NULL, " ");
-    //~ }
-
     // Second row
-    fgets(buf, BUF, logfile);
+    if (fgets(buf, BUF, logfile)==NULL) {
+		printf("Error: broken logfile\n");
+		exit(1);
+	}
     s=strtok(buf, " ");
     if (strcmp(s, "c")) {
         printf("Error: wrong format!\n");
@@ -84,14 +82,18 @@ hcct_tree_t* createTree(FILE* logfile) {
     // I need a stack to reconstruct the tree
     hcct_pair_t tree_stack[STACK_MAX_DEPTH];
     int stack_idx=0;
-    int nodes=0;
+    UINT32 nodes=0;
     
     UINT32 node_id, parent_id, counter, routine_id;
     UINT16 call_site;
         
     // Create root node
     hcct_node_t* root=malloc(sizeof(hcct_node_t));    
-    fgets(buf, BUF, logfile);
+    
+    if (fgets(buf, BUF, logfile)==NULL) {
+		printf("Error: broken logfile\n");
+		exit(1);
+	}
     s=strtok(buf, " ");        
     if (strcmp(s, "v")) {
             printf("Error: wrong format!\n");
@@ -123,7 +125,10 @@ hcct_tree_t* createTree(FILE* logfile) {
     // Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>    
     hcct_node_t *node, *parent, *tmp;
     while(1) {
-        fgets(buf, BUF, logfile);
+        if (fgets(buf, BUF, logfile)==NULL) {
+			printf("Error: broken logfile\n");
+			exit(1);
+		}
         s=strtok(buf, " ");        
         if (strcmp(s, "p")==0) break;
         if (strcmp(s, "v")) {
