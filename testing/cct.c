@@ -27,6 +27,9 @@ __thread cct_node_t *cct_stack[STACK_MAX_DEPTH];
 __thread cct_node_t *cct_root;
 __thread UINT32      cct_nodes;
 
+// global parameters set by hcct_getenv()
+char*   dumpPath;
+
 #if BURSTING
 extern unsigned long    sampling_interval;
 extern unsigned long    burst_length;
@@ -38,8 +41,13 @@ extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
 extern __thread int                shadow_stack_idx; 
 #endif
 
+// get parameters from environment variables
 int hcct_getenv()
 {
+	dumpPath=getenv("DUMPPATH");
+	if (dumpPath == NULL || dumpPath[0]=='\0')
+	    dumpPath=NULL;
+	    
     return 0;
 }
 
@@ -224,8 +232,14 @@ void hcct_dump()
         #if DUMP_TREE==1
         int ds;
 	    // up to 10 digits for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
-	    char *dumpFileName=malloc(strlen(program_invocation_short_name)+16); // suffix: -PID.log\0
-	    sprintf(dumpFileName, "%s-%d.log", program_invocation_short_name, tid);
+	    char *dumpFileName;	    
+	    if (dumpPath==NULL) {
+	        dumpFileName=malloc(strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0
+	        sprintf(dumpFileName, "%s-%d.tree", program_invocation_short_name, tid);
+        } else {
+            dumpFileName=malloc(strlen(dumpPath)+1+strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0
+	        sprintf(dumpFileName, "%s/%s-%d.tree", dumpPath, program_invocation_short_name, tid);
+        }
         ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
         if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
         out = fdopen(ds, "w");    

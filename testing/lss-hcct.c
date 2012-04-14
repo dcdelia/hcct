@@ -27,9 +27,10 @@ extern char *program_invocation_short_name;
 #define SetMonitored(x)     ((x)->additional_info=1)
 #define UnsetMonitored(x)   ((x)->additional_info=0)
 
-// space saving global parameters - set by hcct_getenv()
-UINT32          epsilon;
-UINT32          phi;
+// global parameters set by hcct_getenv()
+UINT32  epsilon;
+UINT32  phi;
+char*   dumpPath;
 
 // thread local storage
 __thread unsigned          stack_idx;
@@ -53,8 +54,8 @@ extern __thread int                shadow_stack_idx;
 #endif
 
 
+// get parameters from environment variables
 int hcct_getenv() {
-    // initialize parameters
 	char* value;
     
 	value=getenv("EPSILON");
@@ -78,6 +79,10 @@ int hcct_getenv() {
             printf("[hcct] WARNING: invalid value specified for PHI, using default (%lu) instead\n", phi);            
         }
     }
+    
+    dumpPath=getenv("DUMPPATH");
+	if (dumpPath == NULL || dumpPath[0]=='\0')
+	    dumpPath=NULL;
     
     return 0;
 }
@@ -469,8 +474,14 @@ void hcct_dump()
 	    #if DUMP_TREE==1
 	    int ds;
 	    // up to 10 digits for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
-	    char *dumpFileName=malloc(strlen(program_invocation_short_name)+16); // suffix: -PID.log\0
-	    sprintf(dumpFileName, "%s-%d.log", program_invocation_short_name, tid);
+	    char *dumpFileName;	    
+	    if (dumpPath==NULL) {
+	        dumpFileName=malloc(strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0
+	        sprintf(dumpFileName, "%s-%d.tree", program_invocation_short_name, tid);
+        } else {
+            dumpFileName=malloc(strlen(dumpPath)+1+strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0
+	        sprintf(dumpFileName, "%s/%s-%d.tree", dumpPath, program_invocation_short_name, tid);
+        }
         ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
         if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
         out = fdopen(ds, "w");    

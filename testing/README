@@ -1,20 +1,23 @@
 Passaggio parametri tramite variabili di ambiente (defaults in common.h)
-EPSILON=xxx PHI=xxx SINTVL=xxx BLENGTH=xxx <programma da analizzare>
-Timer ha granularità >= 1 nanosecondo. 
+DUMPPATH=xxx EPSILON=xxx PHI=xxx SINTVL=xxx BLENGTH=xxx <programma da analizzare>
+Timer ha granularità >= 1 nanosecondo.
 
 Per compilare un programma con una delle librerie hcct:
 
-CFLAGS = -finstrument-functions -lpthread -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
-LDFLAGS = -L<path_to_libs> -lhcct_lss_burst (DA CONTROLLARE)
+CFLAGS="-finstrument-functions"
+LDFLAGS="-L/media/testing/SVN/hcct/testing/libs -lhcct_MODULO -lpthread -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit"
 
 Viene fatto il dump dell'albero in un file di log. Un dump per thread, formato simile a DIMACS (vedi sotto).
 Static bursting implementato con clock_nanosleep (forse migliore di nanosleep) lanciato da un thread.
 Ho provato altre strade (es. POSIX timers) ma finora nulla di fatto. Alta precisione attraverso hrtimer del kernel.
 Shadow stack è molto veloce (appena due decimi di secondo in più su una esecuzione di 17s circa per empty+timer).
 
+Per quanto riguarda il tracer, funziona esattamente come rectrace+TraceWriter usati per PIN.
+La risoluzione dei simboli è semplice: basta compilare con -g e usare addr2line (vedi in fondo).
+
 Librerie generate: 
     libhcct_cct_burst.so   libhcct_empty_burst.so  libhcct_lss.so
-    libhcct_cct_malloc.so  libhcct_empty.so
+    libhcct_cct_malloc.so  libhcct_empty.so        libhcct_tracer.so
     libhcct_cct.so         libhcct_lss_burst.so
 
 Test dsp
@@ -23,7 +26,7 @@ Test dsp
 
 Binari dsp generati:
     dsp      dsp-cct-burst   dsp-empty        dsp-gprof  dsp-lss-burst
-    dsp-cct  dsp-cct_malloc  dsp-empty-burst  dsp-lss
+    dsp-cct  dsp-cct_malloc  dsp-empty-burst  dsp-lss    dsp-tracer
     
 Sintassi file dump (visita in ordine dell'albero):
     c <tool> [<epsilon> <phi>] [<sampling_interval> <burst_length>]
