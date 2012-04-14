@@ -1,7 +1,7 @@
 ---------------
 Cose principali
 ---------------
-- SPEC -> ubuntu 8.04 dato che su 11.10 non compila bene
+- Fare i test con SPEC (sembra che venga instrumentato senza problemi)
 
 -----------
 Cose minori
