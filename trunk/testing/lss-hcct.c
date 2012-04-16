@@ -493,6 +493,7 @@ void hcct_dump()
 	hcct_dump_aux(out, hcct_get_root(), &nodes);
 	
 	    #if DUMP_TREE==1
+	    // p <nodes> <enter_events>
 	    fprintf(out, "p %lu %llu\n", nodes, lss_enter_events); // #nodes used for a sanity check in the analysis tool
 	    fclose(out);
 	    #endif
