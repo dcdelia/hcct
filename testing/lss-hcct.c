@@ -33,22 +33,24 @@ UINT32  phi;
 char*   dumpPath;
 
 // thread local storage
-__thread unsigned          stack_idx;
-__thread lss_hcct_node_t  *stack[STACK_MAX_DEPTH];
-__thread lss_hcct_node_t  *hcct_root;
-__thread pool_t           *node_pool;
-__thread void             *free_list;
-__thread UINT32            min, min_idx, num_queue_items, second_min_idx;
-__thread lss_hcct_node_t **queue;
-__thread int               queue_full;
+__thread unsigned			stack_idx;
+__thread lss_hcct_node_t	*stack[STACK_MAX_DEPTH];
+__thread lss_hcct_node_t	*hcct_root;
+__thread pool_t				*node_pool;
+__thread void				*free_list;
+__thread UINT32				min, min_idx, num_queue_items, second_min_idx;
+__thread lss_hcct_node_t	**queue;
+__thread int				queue_full;
+__thread UINT64				lss_enter_events;
 
 #if BURSTING
 extern unsigned long    sampling_interval;
 extern unsigned long    burst_length;
 extern unsigned short   burst_on;   // enable or disable bursting
 extern __thread int     aligned;
+extern __thread UINT64	burst_enter_events;
 
-// legal values from 0 up to shadow_stack_idx-1
+// legal values go from 0 to shadow_stack_idx-1
 extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
 extern __thread int                shadow_stack_idx; 
 #endif
@@ -111,9 +113,7 @@ void update_min() __attribute__((no_instrument_function))
     for (; i < num_queue_items && queue[i]->counter != min; ++i);
         
     if (i>=num_queue_items) {
-        min=0xFFFFFFFF; // SENZA NON FUNZIONA: PERCHÉ????
-        // IF: perche' il vecchio valore di min e' piu' piccolo
-        // del minimo valore attualmente nell'array
+        min=0xFFFFFFFF; // actual min in the array is bigger than old min
         for (i=0; i<num_queue_items; ++i) {
             if (queue[i]->counter < min) {
                 min=queue[i]->counter;
@@ -125,7 +125,7 @@ void update_min() __attribute__((no_instrument_function))
         min_idx=i;
     }
 
-    #else // Another version (faster? maybe slower!)
+    #else // Another version (faster, slower?)
 
     int i=min_idx+1, j=0;
     UINT32 tmp=queue[min_idx]->counter;
@@ -159,8 +159,7 @@ void update_min() __attribute__((no_instrument_function))
 #endif
 
 // to be used only on an unmonitored leaf!
-static void prune(lss_hcct_node_t* node) __attribute__((no_instrument_function)); // PERCHÉ QUA FA QUESTA PORCHERIA???
-static void prune(lss_hcct_node_t* node) {
+static void __attribute__((no_instrument_function)) prune(lss_hcct_node_t* node) {
 
     lss_hcct_node_t *p, *c;
 
@@ -183,16 +182,10 @@ static void prune(lss_hcct_node_t* node) {
 
 void hcct_enter(UINT32 routine_id, UINT16 call_site) {
 
-    #if VERBOSE == 1
-    printf("[lss_hcct] entering routine %lu\n", routine_id);
-    #endif
-
-    #if COMPARE_TO_CCT == 1 && BURSTING == 0
-    rtn_enter_cct(routine_id, call_site);
-    #endif
-
+	++lss_enter_events;
+	
     lss_hcct_node_t *parent = stack[stack_idx];
-    lss_hcct_node_t *node;
+    lss_hcct_node_t *node;    
 
     // check if calling context is already in the tree
     for (node = parent->first_child; 
@@ -319,12 +312,6 @@ void hcct_enter(UINT32 routine_id, UINT16 call_site) {
 
 void hcct_exit()
 {
-
-    #if VERBOSE == 1
-    printf("[lss-hcct] exiting routine %lu\n", 
-        stack[stack_idx]->routine_id);
-    #endif    
-
     stack_idx--;
 }
 
@@ -378,6 +365,8 @@ int hcct_init()
     queue_full      = 0;
     min_idx         = epsilon-1;
     second_min_idx  = 0;
+    
+    lss_enter_events=0;
 
     return 0;
 }
@@ -388,15 +377,13 @@ void hcct_align() {
     stack_idx=0;
     
     #if UPDATE_ALONG_TREE==1
-    // Nota: come in burst.c (PLDI version) chiamo hcct_enter lungo tutto il ramo
-    // Aspetto da controllare, perché sballa tutti i contatori lungo i rami
-    // scan shadow stack from root to current routine (shadow_stack_idx-1)
+    // Updates all nodes related to routines actually in the the stack
     int i;
     for (i=0; i<shadow_stack_idx; ++i)
         hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site);
     aligned=1;
     #else
-    // Uses hcct_enter only on actual routine and on nodes that have to be created along the path
+    // Uses hcct_enter only on current routine and on nodes that have to be created along the path
     lss_hcct_node_t *parent, *node;
     int i;
     
@@ -418,7 +405,7 @@ void hcct_align() {
         }        
     }
     #else
-    // Ottimizzazione (???) - scambio puntatori node e parent invece di accedere a cct_stack    
+    // Should be better :)
     parent=stack[stack_idx];
     for (i=0; i<shadow_stack_idx-1;) {
         for (node=parent->first_child; node!=NULL; node=node->next_sibling)
@@ -489,8 +476,8 @@ void hcct_dump()
 	    char* cwd=getcwd(NULL, 0);
 	    	    	    
 	    #if BURSTING
-	    // c <tool> <epsilon> <phi> <sampling_interval> <burst_length>
-	    fprintf(out, "c lss-hcct-burst %lu %lu %lu %lu\n", epsilon, phi, sampling_interval, burst_length);	    	    
+	    // c <tool> <epsilon> <phi> <sampling_interval> <burst_length> <burst_enter_events>
+	    fprintf(out, "c lss-hcct-burst %lu %lu %lu %lu %llu\n", epsilon, phi, sampling_interval, burst_length, burst_enter_events);	    	    
 	    #else
 	    // c <tool> <epsilon> <phi>
 	    fprintf(out, "c lss-hcct %lu %lu\n", epsilon, phi);	    	    
@@ -506,12 +493,13 @@ void hcct_dump()
 	hcct_dump_aux(out, hcct_get_root(), &nodes);
 	
 	    #if DUMP_TREE==1
-	    fprintf(out, "p %lu\n", nodes); // for a sanity check in the analysis tool
+	    fprintf(out, "p %lu %llu\n", nodes, lss_enter_events); // #nodes used for a sanity check in the analysis tool
 	    fclose(out);
 	    #endif
 	    
 	    #if DUMP_STATS==1
-	    printf("[thread: %d] Total number of nodes: %lu\n", tid, nodes);		
+	    printf("[thread: %d] Total number of nodes: %lu\n", tid, nodes);
+	    printf("[thread: %d] Total number of routine enter events: %llu\n", tid, lss_enter_events);
         #endif
 	#endif
 }

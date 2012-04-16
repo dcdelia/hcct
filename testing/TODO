@@ -6,26 +6,15 @@ Cose principali
 -----------
 Cose minori
 -----------
-- dimensioni corrette buffer per tracer
-- togliere ritorno a capo finale nei file di log?? aggiungere poi spazio per cct? boh
-- cut finale SS con phi? altrimenti posso togliere phi dai parametri di tool costruzione hcct
+- potrei togliere phi da lss visto che non faccio cut finale!!!
 - controllare equivalenza metodi di stack walking
-- sistemare printf di warning/errore (standard error?)
-- rivedere uso di extern
-- controllare estrazione bit call site
 - pthread_cancel
 	gestire async per timer thread http://linux.die.net/man/3/pthread_cancel
 	bisogna fare wrap o va bene buttare i dati?
-- cose che diceva Emilio
-	- problemi SPEC e perl
-	- pthread in valgrind
-- shared libraries... extern? dl_(???)?
 - fpic per shared libraries???
-- sistemare nomi variabili eventualmente
-- gestire atexit? abort??
 - discorso livello ottimizzazioni compilatore
-- si può eliminare stack mantenuta da hcct e scorrere i puntatori all'indietro? forse non ne vale la pena
-- adattare ai 64 bit
+- correggere vecchio TraceWriter (checkTimer e call site forse)
+- dimensioni corrette buffer per tracer
 
 --------------
 Cose abbozzate
@@ -46,3 +35,15 @@ Cose abbozzate
 	In realtà TLS sembra più efficiente rispetto alle key di pthread
 	https://blogs.oracle.com/seongbae/entry/pthread_get_set_specific_vs
 	http://stackoverflow.com/questions/506093/why-is-thread-local-storage-so-slow
+
+-----
+Altro
+-----
+- shared libraries... extern? dl_(???)?
+- gestire atexit? abort??
+- si può eliminare stack mantenuta da hcct e scorrere i puntatori all'indietro? forse non ne vale la pena
+- adattare ai 64 bit
+- rivedere uso di extern
+- cose che diceva Emilio: pthread in valgrind
+- sistemare nomi variabili
+- sistemare printf di warning/errore (standard error?)

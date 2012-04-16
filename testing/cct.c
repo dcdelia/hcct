@@ -35,8 +35,9 @@ extern unsigned long    sampling_interval;
 extern unsigned long    burst_length;
 extern unsigned short   burst_on;   // enable or disable bursting
 extern __thread int     aligned;
+extern __thread UINT64	burst_enter_events;
 
-// legal values from 0 up to shadow_stack_idx-1
+// legal values go from 0 to shadow_stack_idx-1
 extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
 extern __thread int                shadow_stack_idx; 
 #endif
@@ -93,15 +94,13 @@ void hcct_align() {
     cct_stack_idx=0;
     
     #if UPDATE_ALONG_TREE==1
-    // Nota: come in burst.c (PLDI version) chiamo hcct_enter lungo tutto il ramo
-    // Aspetto da controllare, perché sballa tutti i contatori lungo i rami
-    // scan shadow stack from root to current routine (shadow_stack_idx-1)
+    // Updates all nodes related to routines actually in the the stack
     int i;
     for (i=0; i<shadow_stack_idx; ++i)
         hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site);
     aligned=1;
     #else
-    // Uses hcct_enter only on actual routine and on nodes that have to be created along the path
+    // Uses hcct_enter only on current routine and on nodes that have to be created along the path
     cct_node_t *parent, *node;
     int i;
     
@@ -123,7 +122,7 @@ void hcct_align() {
         }        
     }
     #else
-    // Ottimizzazione (???) - scambio puntatori node e parent invece di accedere a cct_stack    
+    // Should be better :)
     parent=cct_stack[cct_stack_idx];
     for (i=0; i<shadow_stack_idx-1;) {
         for (node=parent->first_child; node!=NULL; node=node->next_sibling)
@@ -139,23 +138,6 @@ void hcct_align() {
             break;            
         }        
     }
-    
-    //~ // Variante
-    //~ node=cct_stack[cct_stack_idx];
-    //~ for (i=0; i<shadow_stack_idx-1;) {
-        //~ parent=node;    
-        //~ for (node=parent->first_child; node!=NULL; node=node->next_sibling)
-            //~ if (node->routine_id == shadow_stack[i].routine_id &&
-                //~ node->call_site == shadow_stack[i].call_site) break;
-        //~ if (node!=NULL) {
-            //~ // No need to update counter here
-            //~ cct_stack[++cct_stack_idx]=node;
-            //~ ++i;            
-        //~ } else {
-            //~ // I have to create additional nodes in the next for cycle            
-            //~ break;            
-        //~ }        
-    //~ }
     
     #endif
     
@@ -204,11 +186,12 @@ void hcct_exit()
 }
 
 void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
-        cct_node_t* root, unsigned long *nodes, cct_node_t* parent)
+        cct_node_t* root, unsigned long *nodes, UINT64* cct_enter_events, cct_node_t* parent)
 {
         if (root==NULL) return;
         
-        (*nodes)++;        
+        (*nodes)++;
+        (*cct_enter_events)+=root->counter;
         cct_node_t* ptr;
 
 		#if DUMP_TREE==1
@@ -219,13 +202,14 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
         #endif
         
         for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
-                hcct_dump_aux(out, ptr, nodes, root);		
+                hcct_dump_aux(out, ptr, nodes, cct_enter_events, root);		
 }
 
 void hcct_dump()
 {
 	#if DUMP_STATS==1 || DUMP_TREE==1
 	unsigned long nodes=0;
+	UINT64 cct_enter_events=0;
 	FILE* out;
 	pid_t tid=syscall(__NR_gettid);	    
 	
@@ -247,11 +231,11 @@ void hcct_dump()
 	    char* cwd=getcwd(NULL, 0);
 	    
 	    #if BURSTING
-	    // c <tool> <sampling_interval> <burst_length>	    
-	    fprintf(out, "c cct-burst %lu %lu\n", sampling_interval, burst_length);	    
+	    // c <tool> <sampling_interval> <burst_length> <burst_enter_events>    
+	    fprintf(out, "c cct-burst %lu %lu %llu\n", sampling_interval, burst_length, burst_enter_events);	    
 	    #else
         // c <tool>
-	    fprintf(out, "c cct\n");	    	    
+	    fprintf(out, "c cct \n"); // do not remove the white space between cct and \n :)	    	    
 	    #endif
 	    
 	    // c <command> <process/thread id> <working directory>
@@ -261,10 +245,11 @@ void hcct_dump()
 	    free(cwd);
 	    #endif
 	
-	hcct_dump_aux(out, hcct_get_root(), &nodes, NULL);
+	hcct_dump_aux(out, hcct_get_root(), &nodes, &cct_enter_events, NULL);
+	cct_enter_events--; // root node is a dummy node with counter 1
 	
 	    #if DUMP_TREE==1
-	    fprintf(out, "p %lu\n", nodes); // for a sanity check in the analysis tool
+	    fprintf(out, "p %lu %llu\n", nodes, cct_enter_events); // #nodes used for a sanity check in the analysis tool
 	    fclose(out);
 	    #endif
 	    

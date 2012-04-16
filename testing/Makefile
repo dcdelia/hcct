@@ -5,9 +5,11 @@ WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
 all:	exhaustive burst tracer tools
-		@echo -e "\n==============================================================="
+		@echo
+		@echo "==============================================================="
 		@echo "Remember to copy/symlink the libraries from libs/ into /usr/lib"
-		@echo -e "===============================================================\n"		
+		@echo "==============================================================="
+		@echo		
 
 burst:	libs-burst test-burst
 

@@ -11,7 +11,7 @@
 #define CCT_BURST   3
 #define LSS_BURST   4
 
-#define CCT_FULL_STRING     "cct\n" // no parameters -> \n closes the string
+#define CCT_FULL_STRING     "cct"
 #define LSS_FULL_STRING     "lss-hcct"
 #define CCT_BURST_STRING    "cct-burst"
 #define LSS_BURST_STRING    "lss-hcct-burst"
@@ -43,7 +43,8 @@ struct hcct_tree_s {
     UINT32          burst_length;
     UINT32          epsilon;
     UINT32          phi;
-    
+    UINT64			enter_events;
+    UINT64			burst_enter_events; // 0 if exhaustive analysis    
 };
 
 #endif
