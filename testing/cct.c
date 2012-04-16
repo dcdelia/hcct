@@ -249,6 +249,7 @@ void hcct_dump()
 	cct_enter_events--; // root node is a dummy node with counter 1
 	
 	    #if DUMP_TREE==1
+		// p <nodes> <enter_events>
 	    fprintf(out, "p %lu %llu\n", nodes, cct_enter_events); // #nodes used for a sanity check in the analysis tool
 	    fclose(out);
 	    #endif

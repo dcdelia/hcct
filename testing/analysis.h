@@ -21,7 +21,7 @@ struct hcct_node_s {
     UINT32          routine_id;
     UINT16          call_site;
     UINT32          counter;
-    //char*         info_routine;    // DA IMPLEMENTARE!
+    //char*         info_routine;    // DA IMPLEMENTARE! addr2line?
     
     hcct_node_t*    first_child;
     hcct_node_t*    next_sibling;
@@ -43,8 +43,9 @@ struct hcct_tree_s {
     UINT32          burst_length;
     UINT32          epsilon;
     UINT32          phi;
-    UINT64			enter_events;
-    UINT64			burst_enter_events; // 0 if exhaustive analysis    
+    UINT64			enter_events; // total number of [sampled] rtn enter events
+    UINT64			burst_enter_events; /* total number of rtn enter events
+									(0 if exhaustive analysis is performed) */
 };
 
 #endif
