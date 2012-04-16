@@ -15,6 +15,9 @@ unsigned long   burst_length;
 #define BURSTING 1
 #include "common.h"
 
+// TLS
+__thread UINT64	burst_enter_events;
+
 // shadow stack - legal values from 0 up to shadow_stack_idx-1
 __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
 __thread int                shadow_stack_idx; // PER ORA USO INT PER VERIFICARE SE SUCCEDONO COSE STRANE - DA SISTEMARE
@@ -104,11 +107,15 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         shadow_stack_idx=0;
         aligned=1;
         
+        // Total number of rtn enter events
+		burst_enter_events=0;
+        
         // Initializing hcct module        
         if (hcct_init()==-1) {
             printf("[profiler] error during initialization - exiting...\n");
             exit(1);   
         }
+        
 }
 
 // execute after termination
@@ -131,12 +138,9 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
 // Routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
-	unsigned short cs= (unsigned short)(((unsigned long)call_site)&(0xFFFF)); // PLEASE CHECK THIS
+	++burst_enter_events;
 	
-	// Nel TraceWriter veniva fatto così
-	/*typeByte = RTN_ENTER_CS;
-	// 2 bytes for call site (16 LSBs)
-	myWrite(&ip, sizeof(ADDRINT)/2, 1, tr);*/
+	unsigned short cs=(unsigned short)(((unsigned long)call_site)&(0xFFFF));
 	
 	// Shadow stack
 	shadow_stack[shadow_stack_idx].routine_id=(unsigned long)this_fn;
@@ -154,7 +158,8 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
 {	
     // Shadow stack
     --shadow_stack_idx;
-        
+    
+    //~ // Never happened during tests :)
     //~ if (--shadow_stack_idx<0) {
     //~ printf("FATAL ERROR: stack index < 0\n");
     //~ exit(1);
@@ -186,6 +191,9 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
         // Initialize shadow stack
         shadow_stack_idx=0;
         aligned=1;
+        
+        // Total number of rtn enter events
+		burst_enter_events=0;
         
         hcct_init();
 

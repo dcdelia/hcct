@@ -46,12 +46,7 @@ void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 // Routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
-	unsigned short cs= (unsigned short)(((unsigned long)call_site)&(0xFFFF)); // PLEASE CHECK THIS
- 
-	// Nel TraceWriter veniva fatto così
-	/*typeByte = RTN_ENTER_CS;
-	// 2 bytes for call site (16 LSBs)
-	myWrite(&ip, sizeof(ADDRINT)/2, 1, tr);*/
+	unsigned short cs=(unsigned short)(((unsigned long)call_site)&(0xFFFF));
 	
 	hcct_enter((unsigned long)this_fn, cs);
 }
