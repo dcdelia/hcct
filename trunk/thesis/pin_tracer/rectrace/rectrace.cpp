@@ -87,9 +87,9 @@ void ThreadStart(ThreadRec* t) {
 
     // make output file name
     #if CALL_SITE
-    sprintf(fileName, "rectrace-%s-%u.cs.trace", STool_StripPath(STool_AppName()), STool_ThreadID(t));
+    sprintf(fileName, "%s-%u.cs.trace", STool_StripPath(STool_AppName()), STool_ThreadID(t));
     #else
-    sprintf(fileName, "rectrace-%s-%u.trace", STool_StripPath(STool_AppName()), STool_ThreadID(t));
+    sprintf(fileName, "%s-%u.trace", STool_StripPath(STool_AppName()), STool_ThreadID(t));
     #endif
 
     // print message
