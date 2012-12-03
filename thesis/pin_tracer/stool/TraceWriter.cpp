@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <time.h>
+#include <unistd.h>
 
 // -------------------------------------------------------------
 // Constants and types
