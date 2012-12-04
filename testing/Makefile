@@ -15,13 +15,12 @@ burst:	libs-burst test-burst
 
 exhaustive:	libs test
 
-libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h allocator/pool.c allocator/pool.h
+libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h
 		$(CC) -c cct.c
 		$(CC) -c cct.c -DUSE_MALLOC -o cct_malloc.o
 		$(CC) -c empty.c
 		$(CC) -c lss-hcct.c
-		$(CC) -c allocator/pool.c
-		@## Devo sistemare queste schifezze dei flag e degli include...
+		$(CC) -c pool.c		
 		@# empty profiler
 		$(CC) -c core_profiler.c -DPROFILER_EMPTY
 		$(CC) -shared empty.o core_profiler.o -o libhcct_empty.so $(WRAP)
@@ -36,8 +35,8 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h alloca
 		@mv *.so libs/
 		@rm -f *.o		
 
-libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h allocator/pool.c allocator/pool.h
-		$(CC) -c allocator/pool.c
+libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h
+		$(CC) -c pool.c
 		$(CC) -c empty.c -DBURSTING
 		$(CC) -c core_profiler_bursting.c -DPROFILER_EMPTY
 		$(CC) -shared empty.o core_profiler_bursting.o -o libhcct_empty_burst.so -lrt $(WRAP)
@@ -52,17 +51,17 @@ libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h 
 		@rm -f *.o
 		
 test:	Makefile example.c
-		@mkdir -p bin
-		$(CC) -o bin/test_empty example.c -L./libs -lhcct_empty $(INSTR)
-		$(CC) -o bin/test_cct example.c -L./libs -lhcct_cct $(INSTR)
-		$(CC) -o bin/test_cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
-		$(CC) -o bin/test_lss example.c -L./libs -lhcct_lss $(INSTR)
+		@mkdir -p test
+		$(CC) -g -o test/empty example.c -L./libs -lhcct_empty $(INSTR)
+		$(CC) -g -o test/cct example.c -L./libs -lhcct_cct $(INSTR)
+		$(CC) -g -o test/cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
+		$(CC) -g -o test/lss example.c -L./libs -lhcct_lss $(INSTR)
 		
 test-burst:	Makefile example.c
-		@mkdir -p bin
-		$(CC) -o bin/test_empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
-		$(CC) -o bin/test_cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
-		$(CC) -o bin/test_lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
+		@mkdir -p test
+		$(CC) -g -o test/empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
+		$(CC) -g -o test/cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
+		$(CC) -g -o test/lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
 		
 tracer: Makefile tracer.c tracer.h example.c		
 		$(CC) -c tracer.c
@@ -70,12 +69,12 @@ tracer: Makefile tracer.c tracer.h example.c
 		@mkdir -p libs
 		@mv *.so libs/
 		@rm -f *.o		
-		@mkdir -p bin
-		$(CC) -o bin/test_tracer example.c -L./libs -lhcct_tracer $(INSTR)
+		@mkdir -p test
+		$(CC) -o test/tracer example.c -L./libs -lhcct_tracer $(INSTR)
 		
 tools:	Makefile analysis.c common.h analysis.h
-		@mkdir -p bin
-		$(CC) -o bin/analysis analysis.c
+		@mkdir -p tools
+		$(CC) -o tools/analysis analysis.c
 
 clean:	
-		rm -rf libs bin
+		rm -rf libs tools test

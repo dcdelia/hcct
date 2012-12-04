@@ -15,7 +15,7 @@ extern char *program_invocation_short_name;
 #include "cct.h"
 
 #if USE_MALLOC==0
-	#include "allocator/pool.h"
+	#include "pool.h"
 	#define PAGE_SIZE		1024
 	__thread pool_t     *cct_pool;
 	__thread void       *cct_free_list;
@@ -82,6 +82,7 @@ int hcct_init()
 
     cct_stack[0]->first_child = NULL;
     cct_stack[0]->next_sibling = NULL;
+    cct_stack[0]->routine_id = 0;
     cct_stack[0]->counter = 1;
     cct_root = cct_stack[0];
 

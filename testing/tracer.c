@@ -34,6 +34,7 @@ UINT32					timerGranularity;
 pthread_t				timerThreadID;
 __thread TraceWriter	*trace;
 
+// TODO: save process memory map
 
 #if OPTIMIZE_IO==0
 // Use standard fwrite

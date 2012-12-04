@@ -21,7 +21,7 @@ struct hcct_node_s {
     UINT32          routine_id;
     UINT16          call_site;
     UINT32          counter;
-    //char*         info_routine;    // DA IMPLEMENTARE! addr2line?
+    char*			info;
     
     hcct_node_t*    first_child;
     hcct_node_t*    next_sibling;
@@ -37,6 +37,8 @@ struct hcct_pair_s {
 typedef struct hcct_tree_s hcct_tree_t;
 struct hcct_tree_s {
     hcct_node_t*    root;
+    char			*short_name;
+    char			*program_path;
     unsigned short  tool;
     UINT32          nodes;
     UINT32          sampling_interval;
@@ -46,6 +48,15 @@ struct hcct_tree_s {
     UINT64			enter_events; // total number of [sampled] rtn enter events
     UINT64			burst_enter_events; /* total number of rtn enter events
 									(0 if exhaustive analysis is performed) */
+};
+
+typedef struct hcct_map_s hcct_map_t;
+struct hcct_map_s {
+	UINT32		start;
+	UINT32		end;	
+	char*		pathname;
+	UINT32		offset; // offset into the file - man proc (5)
+	hcct_map_t*	next;
 };
 
 #endif
