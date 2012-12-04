@@ -6,14 +6,15 @@
 #include <fcntl.h>
 #include <unistd.h> // getcwd
 #include <string.h>
+#include <math.h> // ceil
 
 #define _GNU_SOURCE
 #include <errno.h>
 extern char *program_invocation_name;
 extern char *program_invocation_short_name;
 
-#include "allocator/pool.h"
 #include "lss-hcct.h"
+#include "pool.h"
 
 // swap macro
 #define swap_and_decr(a,b) {            \
@@ -58,28 +59,53 @@ extern __thread int                shadow_stack_idx;
 
 // get parameters from environment variables
 int hcct_getenv() {
-	char* value;
+	char *value;
+	
+	char *end; // strtod()
+	double d;
     
 	value=getenv("EPSILON");
 	if (value == NULL || value[0]=='\0')
 	    epsilon=EPSILON;
     else {
+    /* // Old format: integer value specified as 1/epsilon
         epsilon=strtoul(value, NULL, 0);
         if (epsilon==0) {
             epsilon=EPSILON;
             printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%lu) instead\n", epsilon);
         }
+    */
+		d=strtod(value, &end);
+		if (d<=0 || d>1.0) { // 0 is an error code
+            epsilon=EPSILON;
+            printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%f) instead\n", 1.0/epsilon);
+        } else {
+			epsilon=(UINT32)ceil(1.0/d);
+		}	
     }
     
     value=getenv("PHI");
 	if (value == NULL || value[0]=='\0')
 	    phi=PHI;
     else {
+        /* //Old format
         phi=strtoul(value, NULL, 0);
         if (phi==0) {
             phi=PHI;
             printf("[hcct] WARNING: invalid value specified for PHI, using default (%lu) instead\n", phi);            
         }
+        */
+        d=strtod(value, &end);
+		if (d<=0 || d >= 1.0) { // 0 is an error code
+            phi=epsilon/10;
+            printf("[hcct] WARNING: invalid value specified for PHI, using default (PHI=10*EPSILON) instead\n", phi);
+        } else {
+			phi=(UINT32)ceil(1.0/d);
+			if (phi>=EPSILON) {
+				phi=epsilon/10;
+				printf("[hcct] WARNING: PHI must be greater than EPSILON, using PHI=10*EPSILON instead");
+			}
+		}	        
     }
     
     dumpPath=getenv("DUMPPATH");
@@ -461,6 +487,7 @@ void hcct_dump()
 	    #if DUMP_TREE==1
 	    int ds;
 	    // up to 10 digits for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
+	    // TODO FIX %d 10 digits
 	    char *dumpFileName;	    
 	    if (dumpPath==NULL) {
 	        dumpFileName=malloc(strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0

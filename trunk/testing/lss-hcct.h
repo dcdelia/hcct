@@ -2,7 +2,6 @@
 #define __LSS__
 
 #include "common.h"
-#include "allocator/pool.h"
 
 #define INLINE_UPD_MIN          1
 #define UPDATE_MIN_SENTINEL     1

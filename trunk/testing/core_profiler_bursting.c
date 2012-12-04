@@ -6,6 +6,12 @@
 #include <asm/unistd.h> // syscall(__NR_gettid)
 #include <sys/types.h> // pid_t, timer_t
 
+#include <string.h>
+#define _GNU_SOURCE
+#include <errno.h>
+//extern char *program_invocation_name;
+extern char *program_invocation_short_name;
+
 // timer globals
 pthread_t       timerThreadID;
 unsigned short  burst_on;   // enable or disable bursting
@@ -20,11 +26,11 @@ __thread UINT64	burst_enter_events;
 
 // shadow stack - legal values from 0 up to shadow_stack_idx-1
 __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
-__thread int                shadow_stack_idx; // PER ORA USO INT PER VERIFICARE SE SUCCEDONO COSE STRANE - DA SISTEMARE
+__thread int                shadow_stack_idx; // TODO
 __thread int                aligned;
 
 
-// Eliminare questa porcheria!!! :)
+// TODO
 #ifdef PROFILER_CCT
 #include "cct.h"
 #else
@@ -33,6 +39,21 @@ __thread int                aligned;
 #else
 #include "lss-hcct.h"
 #endif
+#endif
+
+#ifndef PROFILER_EMPTY
+void hcct_dump_map() {
+	
+	pid_t pid=syscall(__NR_getpid);
+		
+	// Command to be executed: "cp /proc/<PID>/maps <name>.map\0" => 9+10+6+variable+5 bytes needed
+	char* command=malloc(strlen(program_invocation_short_name)+30);
+	sprintf(command, "cp /proc/%d/maps %s.map", pid, program_invocation_short_name);
+	
+	int ret=system(command);
+	if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");	
+			
+}
 #endif
 
 // separate thread to handle timer
@@ -63,7 +84,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 {
         #if SHOW_MESSAGES==1
         printf("[profiler] program start - tid %d\n", syscall(__NR_gettid));
-        #endif
+        #endif              
         
         // Initializing timer thread parameters (granularity: nanoseconds)
         burst_on=1;
@@ -132,7 +153,11 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
         printf("[profiler] program exit - tid %d\n", syscall(__NR_gettid));
         #endif
         
-        hcct_dump(hcct_get_root(), 1);
+		#ifndef PROFILER_EMPTY
+        hcct_dump_map();
+        #endif
+        
+        hcct_dump();
 }
 
 // Routine enter
@@ -180,7 +205,7 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 		#endif
 		
 		// Exit stuff
-		hcct_dump(hcct_get_root(), 1);
+		hcct_dump();
         
         __real_pthread_exit(value_ptr);
 }
@@ -210,7 +235,7 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
         #endif
         
         // Exit stuff
-        hcct_dump(hcct_get_root(), 1);
+        hcct_dump();
         
         return ret;
 }

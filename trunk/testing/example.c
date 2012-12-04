@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-// #include <asm/unistd.h> // per la costante di chiamata __NR_gettid
+// #include <asm/unistd.h> // __NR_gettid
 
 #define NUM_THREADS 8
 
@@ -42,7 +42,7 @@ void *TaskCode(void *argument)
 			test2();
 		}
         
-        if (tid%2==0) { // per provare due modi diversi di terminare thread (return o pthread_exit)
+        if (tid%2==0) { // tests two different thread termination methods (return and pthread_exit)
                 pthread_exit(NULL);
         }
         else return NULL;
@@ -69,6 +69,6 @@ int main(void)
                 rc = pthread_join(threads[i], NULL);
                 assert(0 == rc);
         }
-
+        
         exit(EXIT_SUCCESS);
 }
