@@ -6,16 +6,22 @@ INSTR =		-finstrument-functions -lpthread $(WRAP)
 
 all:	exhaustive burst tracer tools
 		@echo
-		@echo "==============================================================="
-		@echo "Remember to copy/symlink the libraries from libs/ into /usr/lib"
-		@echo "==============================================================="
-		@echo		
+		@echo "==========================================================="
+		@echo "If the operations below fail, please do them again as root!"
+		@echo "==========================================================="		
+		@echo
+		cp libs/* /usr/local/lib
+		cd /usr/local/lib && ln -f -s libhcct_lss.so libhcct.so		
+		@echo
+		@echo "====="
+		@echo "Done."
+		@echo "====="		
 
 burst:	libs-burst test-burst
 
-exhaustive:	libs test
+exhaustive:	libs test		
 
-libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h
+libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h		
 		$(CC) -c cct.c
 		$(CC) -c cct.c -DUSE_MALLOC -o cct_malloc.o
 		$(CC) -c empty.c
@@ -35,7 +41,7 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c
 		@mv *.so libs/
 		@rm -f *.o		
 
-libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h
+libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h		
 		$(CC) -c pool.c
 		$(CC) -c empty.c -DBURSTING
 		$(CC) -c core_profiler_bursting.c -DPROFILER_EMPTY
@@ -50,7 +56,7 @@ libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h 
 		@mv *.so libs/
 		@rm -f *.o
 		
-test:	Makefile example.c
+test:	Makefile example.c		
 		@mkdir -p test
 		$(CC) -g -o test/empty example.c -L./libs -lhcct_empty $(INSTR)
 		$(CC) -g -o test/cct example.c -L./libs -lhcct_cct $(INSTR)
@@ -63,7 +69,7 @@ test-burst:	Makefile example.c
 		$(CC) -g -o test/cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
 		$(CC) -g -o test/lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
 		
-tracer: Makefile tracer.c tracer.h example.c		
+tracer: Makefile tracer.c tracer.h example.c
 		$(CC) -c tracer.c
 		$(CC) -shared tracer.o -o libhcct_tracer.so -lrt $(WRAP)
 		@mkdir -p libs
@@ -72,7 +78,7 @@ tracer: Makefile tracer.c tracer.h example.c
 		@mkdir -p test
 		$(CC) -o test/tracer example.c -L./libs -lhcct_tracer $(INSTR)
 		
-tools:	Makefile analysis.c common.h analysis.h
+tools:	Makefile analysis.c common.h analysis.h		
 		@mkdir -p tools
 		$(CC) -o tools/analysis analysis.c
 

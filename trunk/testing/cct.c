@@ -83,6 +83,7 @@ int hcct_init()
     cct_stack[0]->first_child = NULL;
     cct_stack[0]->next_sibling = NULL;
     cct_stack[0]->routine_id = 0;
+    cct_stack[0]->call_site = 0;
     cct_stack[0]->counter = 1;
     cct_root = cct_stack[0];
 

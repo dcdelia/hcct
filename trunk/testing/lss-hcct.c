@@ -362,6 +362,7 @@ int hcct_init()
     hcct_root->next_sibling = NULL;
     hcct_root->counter      = 1;
     hcct_root->routine_id   = 0;
+    hcct_root->call_site	= 0;
     hcct_root->parent       = NULL;
     SetMonitored(hcct_root);
 
