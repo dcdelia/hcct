@@ -1,1 +1,0 @@
-We would like to thank the reviewers for their many useful comments, which we will take into account in revising our paper. In particular, we will add actual run-time overheads and address in more depth workload analysis and the relationship of our approach with sampling.

@@ -1,8 +1,0 @@
-#algorithm      X       HCCT time        HCCT empty        CCT time        CCT empty        
-"full HCCT"     5       35.12            9.95              20.005          9.95
-"static"        10      15.565           11.73             20.005          9.95
-# Correggere!!!
-"RR 20%%"       15      15.04            11.73             20.005          9.95   
-"RR 10%%"       20      13.8             11.73             20.005          9.95    
-"RR 5%%"        25      13.775           11.73             20.005          9.95
-"adaptive"      30      13.66            11.73             20.005          9.95              

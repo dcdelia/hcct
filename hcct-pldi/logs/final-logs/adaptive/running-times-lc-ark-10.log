@@ -1,7 +1,0 @@
-#algorithm      X       HCCT time        HCCT empty        CCT time        CCT empty    
-"full HCCT"     5       7.38             2.4               5.3             2.4 
-"static"        10      3.715            2.9               5.3             2.4    
-"RR 20%%"       15      3.25             2.9               5.3             2.4   
-"RR 10%%"       20      3.185            2.9               5.3             2.4    
-"RR 5%%"        25      3.175            2.9               5.3             2.4    
-"adaptive"      30      3.115            2.9	           5.3             2.4              
