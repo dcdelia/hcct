@@ -582,16 +582,21 @@ int main(int argc, char* argv[]) {
     fclose(outgraph);
     
     // create png graph
-    char* pngname=strdup(outgraph_name);
-    sprintf(pngname, "%s-%lu.png", tree->short_name, tree->tid);    
-    char* command=malloc(10+strlen(outgraph_name)+4+strlen(pngname)+1);
-    sprintf(command, "dot -Tpng %s -o %s", outgraph_name, pngname);    
-    int ret=system(command);
-	if (ret!=0) printf("Please check that GraphViz is installed in order to generate PNG graph!\n");
-	else printf("PNG graph %s generated successfully!\n", pngname);
+    char* imgname=strdup(outgraph_name);
+    sprintf(imgname, "%s-%lu.png", tree->short_name, tree->tid);    
+    char* command=malloc(10+strlen(outgraph_name)+4+strlen(imgname)+1);
+    sprintf(command, "dot -Tpng %s -o %s", outgraph_name, imgname);        
+	if (system(command)!=0) printf("Please check that GraphViz is installed in order to generate PNG graph!\n");
+	else printf("PNG graph %s generated successfully!\n", imgname);
+	
+	// create svg graph (very useful for large graphs)
+	sprintf(imgname, "%s-%lu.svg", tree->short_name, tree->tid);
+	sprintf(command, "dot -Tsvg %s -o %s", outgraph_name, imgname);	
+	if (system(command)!=0) printf("Please check that GraphViz is installed in order to generate SVG graph!\n");
+	else printf("SVG graph %s generated successfully!\n", imgname);
         
 	free(outgraph_name);
-    free(pngname);
+    free(imgname);
     free(command);    
     
     freeTree(tree);

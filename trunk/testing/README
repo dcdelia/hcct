@@ -1,0 +1,34 @@
+===============
+Getting started
+===============
+
+To compile the profiling libraries and tools, just
+
+$ make
+
+You need write access to /usr/local/lib, otherwise copy the libraries as root from libs/ and symlink your default profiling tool to libhcct.so
+
+To instrument a program, manually edit the Makefile or run ./configure with environment variables:
+
+CFLAGS="-finstrument-functions -g"
+LDFLAGS="-lhcct -lpthread -Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit"
+
+When a program foo is executed, several foo-<TID>.tree are created (one per thread), plus an additional file foo.map mirroring /proc/self/maps.
+
+You can specify additional parameters as environment variables. For instance try one of the test programs:
+
+DUMPPATH="/tmp" EPSILON=0.0001 SINTVL=200000 BLENGTH=20000 test/lss_burst
+
+DUMPPATH specifies where to save output files (default: working directory).
+EPSILON specifies the error threshold for Space Saving - take a look at the paper!
+SINTVL and BLENGTH specify (in nanoseconds) sampling interval and burst length, respectively.
+
+To process a profiler's output file, use the tool 'analysis' included in tools:
+
+tools/analysis foo-<TID>.tree 0.001
+
+Where 0.001 is an optional value specifying the frequency threshold phi for Space Saving - again, take a look at the paper! :)
+
+The analysis tool will produce an output file foo-<TID>.dot containing the HCCT in GraphViz format. If GraphViz is installed, graph is created also in PNG and SVG.
+
+Enjoy!

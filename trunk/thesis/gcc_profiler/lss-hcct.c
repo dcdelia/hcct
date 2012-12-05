@@ -67,45 +67,23 @@ int hcct_getenv() {
 	value=getenv("EPSILON");
 	if (value == NULL || value[0]=='\0')
 	    epsilon=EPSILON;
-    else {
-    /* // Old format: integer value specified as 1/epsilon
+    else {		
         epsilon=strtoul(value, NULL, 0);
         if (epsilon==0) {
             epsilon=EPSILON;
             printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%lu) instead\n", epsilon);
-        }
-    */
-		d=strtod(value, &end);
-		if (d<=0 || d>1.0) { // 0 is an error code
-            epsilon=EPSILON;
-            printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%f) instead\n", 1.0/epsilon);
-        } else {
-			epsilon=(UINT32)ceil(1.0/d);
-		}	
+        }    
     }
     
     value=getenv("PHI");
 	if (value == NULL || value[0]=='\0')
 	    phi=PHI;
-    else {
-        /* //Old format
+    else {        
         phi=strtoul(value, NULL, 0);
         if (phi==0) {
             phi=PHI;
             printf("[hcct] WARNING: invalid value specified for PHI, using default (%lu) instead\n", phi);            
         }
-        */
-        d=strtod(value, &end);
-		if (d<=0 || d >= 1.0) { // 0 is an error code
-            phi=epsilon/10;
-            printf("[hcct] WARNING: invalid value specified for PHI, using default (PHI=10*EPSILON) instead\n", phi);
-        } else {
-			phi=(UINT32)ceil(1.0/d);
-			if (phi>=EPSILON) {
-				phi=epsilon/10;
-				printf("[hcct] WARNING: PHI must be greater than EPSILON, using PHI=10*EPSILON instead");
-			}
-		}	        
     }
     
     dumpPath=getenv("DUMPPATH");
