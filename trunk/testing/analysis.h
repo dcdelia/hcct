@@ -39,7 +39,8 @@ struct hcct_tree_s {
     hcct_node_t*    root;
     char			*short_name;
     char			*program_path;
-    unsigned short  tool;
+    UINT32			tid;
+    unsigned short  tool;    
     UINT32          nodes;
     UINT32          sampling_interval;
     UINT32          burst_length;
