@@ -1,2 +1,0 @@
-#benchmark     num enter   num exit    tot su time (s)  avg op su time (ns) tot wc time (s)  avg op wc time (ns) memory (KB)    |CCT|        |call graph| |call sites|  
-vlc            125436877   125436871   3.140            12.516              3.154107         12.572487           64284          3295907      5692         47481         
