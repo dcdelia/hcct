@@ -80,7 +80,7 @@ tracer: Makefile tracer.c tracer.h example.c
 		
 tools:	Makefile analysis.c common.h analysis.h		
 		@mkdir -p tools
-		$(CC) -o tools/analysis analysis.c
+		$(CC) -o tools/analysis analysis.c -lm
 
 clean:	
 		rm -rf libs tools test

@@ -98,7 +98,7 @@ int hcct_getenv() {
         d=strtod(value, &end);
 		if (d<=0 || d >= 1.0) { // 0 is an error code
             phi=epsilon/10;
-            printf("[hcct] WARNING: invalid value specified for PHI, using default (PHI=10*EPSILON) instead\n", phi);
+            printf("[hcct] WARNING: invalid value specified for PHI, using default (PHI=10*EPSILON) instead\n");
         } else {
 			phi=(UINT32)ceil(1.0/d);
 			if (phi>=EPSILON) {

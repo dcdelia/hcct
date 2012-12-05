@@ -4,6 +4,7 @@
 #include "common.h"
 
 #define BUF 500
+#define DEFAULT_EPSILON 10000
 
 // Discriminate tool used to create logfile
 #define CCT_FULL    1
