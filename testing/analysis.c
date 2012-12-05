@@ -4,6 +4,32 @@
 
 #include "analysis.h"
 
+// remove from tree every node such that node->counter <= min_counter
+void pruneTree(hcct_tree_t* tree, hcct_node_t* node, UINT32 min_counter) {
+	if (node==NULL) return;
+	
+	hcct_node_t* tmp;
+	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
+		pruneTree(tree, tmp, min_counter);
+			
+	if (node->counter <= min_counter && node->first_child == NULL && node->routine_id != 0) {
+		// detach node from the tree
+		if (node->parent->first_child==node) {
+			node->parent->first_child=node->next_sibling;
+		} else {
+			for (tmp=node->parent->first_child; tmp!=NULL; tmp=tmp->next_sibling) {
+				if (tmp->next_sibling==node) {
+					tmp->next_sibling=node->next_sibling;
+					break;					
+				}
+			}
+		}
+		tree->nodes--;
+		free(node);
+	}
+}
+
+// print tree to screen
 void printTree(hcct_node_t* node, int level) {
 	if (node==NULL) return;
 	
@@ -18,6 +44,7 @@ void printTree(hcct_node_t* node, int level) {
 		printTree(tmp, level+1);	
 }
 
+// process line from /proc maps file
 int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, char** pathname) {
 
 	UINT32 tmp;
@@ -55,7 +82,7 @@ int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, c
 	}
 }
 
-// TODO: call sites
+// TODO: call sites, shared libraries
 void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t* map) {	
 	#define BUFLEN 512
 	FILE* fp;
@@ -69,6 +96,8 @@ void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t
 		printf("Error: unable to execute addr2line!");
 		exit(1);
 	}
+	
+	free(command);
     
 	if (fgets(buf, BUFLEN, fp) != NULL) {
 		if (buf[0]!='?' && buf[1]!='?') { // addr2line worked!
@@ -76,27 +105,60 @@ void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t
 			*s=strdup(buf);
 			pclose(fp);
 			return;
-		}
+		} // else: try to solve it manually (see below)
 	} else {
 		printf("Error: addr2line does not work!");
 		exit(1);
 	}
 
-	pclose(fp);	
-	#undef BUFLEN
+	pclose(fp);		
 	
 	// Try to solve it manually...
 	
 	for ( ; map!=NULL; map=map->next)
 		if (addr >= map->start && addr <= map->end) {
+			/* // Old method
 			*s=malloc(33+2*8+strlen(map->pathname)+1); // 8 characters for each address
 			sprintf(*s, "??? in memory region %lx-%lx mapped to %s", map->start, map->end, map->pathname);
 			return;
+			*/
+			if (map->pathname[0]='/') { // dynamic library
+				UINT32 offset= addr - map->start;
+				
+				char* command=malloc(13+strlen(map->pathname)+10+8+1); // 8 characters for 32 bit address	
+				sprintf(command, "addr2line -e %s -f -s -p %lx", map->pathname, offset);
+				fp=popen(command, "r");
+			
+				if (fp == NULL) {
+					printf("Error: unable to execute addr2line!");
+					exit(1);
+				}
+				
+				free(command);
+				
+				// addr2line on a shared library
+				if (fgets(buf, BUFLEN, fp) != NULL) {
+					if (buf[0]!='?' && buf[1]!='?') { // addr2line worked!
+						buf[strlen(buf)-1]='\0';
+						*s=malloc(1+strlen(map->pathname)+2+strlen(buf)+1);
+						sprintf(*s, "[%s] %s", map->pathname, buf);					
+					} else {
+						*s=malloc(33+2*8+strlen(map->pathname)+1); // 8 characters for each address
+						sprintf(*s, "??? in memory region %lx-%lx mapped to %s", map->start, map->end, map->pathname);
+					}
+					pclose(fp);
+					return;
+				} else {
+					printf("Error: addr2line does not work!");
+					exit(1);
+				} // end of addr2line block			
+			}			
 		}
 	
-	*s="<unknown>";	
+	*s="<unknown>";	// address not solved :(
 }
 
+// create data structure for memory mapped regions
 hcct_map_t* createMemoryMap(char* program) {
 	FILE* mapfile;
 	char* filename;	
@@ -149,6 +211,7 @@ hcct_map_t* createMemoryMap(char* program) {
 	return first;    
 }
 
+// create tree in memory
 hcct_tree_t* createTree(FILE* logfile) {    
     char buf[BUF+1];
     char *s;
@@ -424,8 +487,18 @@ int main(int argc, char* argv[]) {
     }
     hcct_tree_t *tree;
     tree=createTree(logfile);
-    UINT32 hot=hotNodes(tree->root, 100);
-    printf("Number of hot nodes (counter>100): %lu\n", hot);
+    
+    UINT64 stream_length=tree->burst_enter_events;
+    if (stream_length==0) stream_length=tree->enter_events;
+    printf("\nBefore pruning, tree has %lu nodes and stream length is %llu\n", tree->nodes, stream_length);
+    
+    printf("Using demo phi=0.001 as hotness threshold...\n\n");    
+    UINT32 min_counter=stream_length/1000;    
+    pruneTree(tree, tree->root, min_counter);
+    
+    printf("Number of nodes (hot and cold): %lu\n", tree->nodes);
+    UINT32 hot=hotNodes(tree->root, min_counter);
+    printf("Number of hot nodes (counter>%lu): %lu\n", min_counter, hot);
     UINT64 sum=sumCounters(tree->root);
     printf("Sum of counters: %llu\n", sum);
     UINT32 hottest=hottestCounter(tree->root);
