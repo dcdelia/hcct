@@ -44,6 +44,32 @@ void printTree(hcct_node_t* node, int level) {
 		printTree(tmp, level+1);	
 }
 
+void printGraphvizAux(hcct_node_t* node, FILE* out) {
+	if (node==NULL) return;
+	
+	hcct_node_t* tmp;
+	
+	fprintf(out, "\"%lx\" -> \"%lx\" [label=\"calls: %lu\"];\n", (UINT32)node->parent, (UINT32)node, node->counter);
+	
+	char* compact = strtok(node->info, " "); // TODO - this is a demo!
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)node, compact);
+
+	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
+		printGraphvizAux(tmp, out);
+	
+}
+
+void printGraphviz(hcct_tree_t* tree, FILE* out) {
+	fprintf(out, "digraph HCCT{\n");
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)tree->root, tree->root->info);
+	
+	hcct_node_t* child;
+	for (child=tree->root->first_child; child!=NULL; child=child->next_sibling)		
+		printGraphvizAux(child, out);	
+	
+	fprintf(out, "}\n");
+}
+
 // process line from /proc maps file
 int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, char** pathname) {
 
@@ -282,16 +308,22 @@ hcct_tree_t* createTree(FILE* logfile) {
         exit(1);
     }
     
-    char* short_name, *pid, *program_path;
+    char* short_name, *tid, *program_path;
     short_name=strtok(NULL, " ");    
-    pid=strtok(NULL, " "); // useless
+    tid=strtok(NULL, " ");
     program_path=strtok(NULL, "\n");
     
+    // Remove ./ from program name
+    if (short_name[0]=='.' && short_name[1]=='/')
+		tree->short_name=strdup(short_name+2);
+	else
+		tree->short_name=strdup(short_name);
+    
     tree->program_path=strdup(program_path);
-    tree->short_name=strdup(short_name);
+    tree->tid=strtoul(tid, NULL, 0);
     
     printf("Instrumented program:");
-    printf(" %s %s (PID: %s)\n", tree->program_path, tree->short_name, pid);
+    printf(" %s %s (TID: %lu)\n", tree->program_path, tree->short_name, tree->tid);
     
     // CHECK LOG PATH
     hcct_map_t* map=createMemoryMap(tree->short_name);	
@@ -503,9 +535,36 @@ int main(int argc, char* argv[]) {
     UINT32 closest=largerThanHottest(tree->root, 10, hottest); // TAU=10
     printf("Hottest nodes for TAU=10: %lu\n", closest);
     
-    printf("\n");
-    printTree(tree->root, 0);
-    printf("\n");
+    //printf("\n");
+    //printTree(tree->root, 0);
+    //printf("\n");
+        
+    // TODO scelta nome file
+    FILE* out;
+    
+    // Prepare output file
+    char* outname=malloc(strlen(tree->short_name)+1+10+4+1); // 10 for TID (64 bit?!?)
+    sprintf(outname, "%s-%lu.dot", tree->short_name, tree->tid);
+        
+    out=fopen(outname, "w+");
+    printf("Saving HCCT in GraphViz file %s...", outname);
+    printGraphviz(tree, out);    
+    printf(" done!\n");
+    fclose(out);
+    
+    char* pngname=strdup(outname);
+    sprintf(pngname, "%s-%lu.png", tree->short_name, tree->tid);
+    
+    char* command=malloc(10+strlen(outname)+4+strlen(pngname)+1);
+    sprintf(command, "dot -Tpng %s -o %s", outname, pngname);
+    
+    int ret=system(command);
+	if (ret!=0) printf("Please check that GraphViz is installed in order to generate PNG graph!\n");
+	else printf("PNG graph %s generated successfully!\n", pngname);
+        
+    free(command);
+    free(outname);
+    free(pngname);    
         
     fclose(logfile);
     freeTree(tree);
