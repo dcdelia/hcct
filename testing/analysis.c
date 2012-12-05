@@ -116,17 +116,11 @@ void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t
 	// Try to solve it manually...
 	
 	for ( ; map!=NULL; map=map->next)
-		if (addr >= map->start && addr <= map->end) {
-			/* // Old method
-			*s=malloc(33+2*8+strlen(map->pathname)+1); // 8 characters for each address
-			sprintf(*s, "??? in memory region %lx-%lx mapped to %s", map->start, map->end, map->pathname);
-			return;
-			*/
-			if (map->pathname[0]='/') { // dynamic library
-				UINT32 offset= addr - map->start;
-				
-				char* command=malloc(13+strlen(map->pathname)+10+8+1); // 8 characters for 32 bit address	
-				sprintf(command, "addr2line -e %s -f -s -p %lx", map->pathname, offset);
+		if (addr >= map->start && addr <= map->end) {			
+			if (map->pathname[0]=='/') { // [heap], [stack] ...
+				UINT32 offset= addr - map->start;				
+				command=malloc(13+strlen(map->pathname)+10+8+13+1); // 8 characters for 32 bit address	
+				sprintf(command, "addr2line -e %s -f -s -p %lx 2> /dev/null", map->pathname, offset);
 				fp=popen(command, "r");
 			
 				if (fp == NULL) {
@@ -134,28 +128,30 @@ void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t
 					exit(1);
 				}
 				
-				free(command);
+				free(command);				
 				
 				// addr2line on a shared library
-				if (fgets(buf, BUFLEN, fp) != NULL) {
+				if (fgets(buf, BUFLEN, fp) != NULL)
 					if (buf[0]!='?' && buf[1]!='?') { // addr2line worked!
 						buf[strlen(buf)-1]='\0';
 						*s=malloc(1+strlen(map->pathname)+2+strlen(buf)+1);
-						sprintf(*s, "[%s] %s", map->pathname, buf);					
-					} else {
-						*s=malloc(33+2*8+strlen(map->pathname)+1); // 8 characters for each address
-						sprintf(*s, "??? in memory region %lx-%lx mapped to %s", map->start, map->end, map->pathname);
-					}
-					pclose(fp);
-					return;
-				} else {
-					printf("Error: addr2line does not work!");
-					exit(1);
-				} // end of addr2line block			
-			}			
+						sprintf(*s, "[%s] %s", map->pathname, buf);
+						pclose(fp);
+						return;						
+					}					
+				
+				// addr2line not executed, address not recognized or invalid format (e.g. .mo file)
+				*s=malloc(1+strlen(map->pathname)+2+8+4+8+1+8+1);
+				sprintf(*s, "[%s] %lx in %lx-%lx", map->pathname, addr, map->start, map->end);					
+				
+				pclose(fp);					
+				return;					
+			}
 		}
+			
+	*s="<unknown>";	// address not even in the map!
 	
-	*s="<unknown>";	// address not solved :(
+	#undef BUFLEN
 }
 
 // create data structure for memory mapped regions
@@ -351,6 +347,7 @@ hcct_tree_t* createTree(FILE* logfile) {
 			printf("Error: broken logfile\n");
 			exit(1);
 		}
+		
         s=strtok(buf, " ");        
         if (strcmp(s, "p")==0) break;
         if (strcmp(s, "v")) {
