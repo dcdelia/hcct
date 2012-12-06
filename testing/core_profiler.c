@@ -120,10 +120,8 @@ void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 
 // Routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
-{	
-	unsigned short cs=(unsigned short)(((unsigned long)call_site)&(0xFFFF));
-	
-	hcct_enter((unsigned long)this_fn, cs);
+{		
+	hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
 }
 
 // Routine exit

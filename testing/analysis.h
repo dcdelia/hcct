@@ -20,13 +20,13 @@
 typedef struct hcct_node_s hcct_node_t;
 struct hcct_node_s {
     UINT32          routine_id;
-    UINT16          call_site;
+    UINT32          call_site;
     UINT32          counter;
-    char*			info;
-    
+    char*			routine_info;
+    char*			call_site_info;    
     hcct_node_t*    first_child;
     hcct_node_t*    next_sibling;
-    hcct_node_t*    parent; // useful?
+    hcct_node_t*    parent;
 };
 
 typedef struct hcct_pair_s hcct_pair_t;

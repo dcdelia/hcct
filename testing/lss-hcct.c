@@ -206,7 +206,7 @@ static void __attribute__((no_instrument_function)) prune(lss_hcct_node_t* node)
     pool_free(node, free_list);
 }
 
-void hcct_enter(UINT32 routine_id, UINT16 call_site) {
+void hcct_enter(UINT32 routine_id, UINT32 call_site) {
 
 	++lss_enter_events;
 	
@@ -470,7 +470,7 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out, lss_hcct_n
 		#if DUMP_TREE==1
 		// Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
 		// Addresses in hexadecimal notation (useful for addr2line)
-		fprintf(out, "v %lx %lx %lu %lx %hx\n", (unsigned long)root, (unsigned long)(root->parent),
+		fprintf(out, "v %lx %lx %lu %lx %lx\n", (unsigned long)root, (unsigned long)(root->parent),
 		                                        root->counter, root->routine_id, root->call_site);
         #endif
         

@@ -164,17 +164,16 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
 	++burst_enter_events;
-	
-	unsigned short cs=(unsigned short)(((unsigned long)call_site)&(0xFFFF));
+		
 	
 	// Shadow stack
 	shadow_stack[shadow_stack_idx].routine_id=(unsigned long)this_fn;
-	shadow_stack[shadow_stack_idx++].call_site=cs;
+	shadow_stack[shadow_stack_idx++].call_site=(unsigned long)call_site;
 	
 	if (burst_on==0) aligned=0;
 	else {
         if (aligned==0) hcct_align();
-        else hcct_enter((unsigned long)this_fn, cs);
+        else hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
     }
 }
 

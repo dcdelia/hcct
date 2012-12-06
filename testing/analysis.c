@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <libgen.h>
 
 #include "analysis.h"
 
@@ -39,7 +40,7 @@ void printTree(hcct_node_t* node, int level) {
 	
 	printf("|=");	
 	for (i=0; i<level; ++i) printf("=");
-	printf("> (%lu) %s\n", node->counter, node->info);
+	printf("> (%lu) %s FROM %s\n", node->counter, node->routine_info, node->call_site_info);
 	
 	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
 		printTree(tmp, level+1);	
@@ -52,10 +53,10 @@ void printGraphvizAux(hcct_node_t* node, FILE* out) {
 	
 	fprintf(out, "\"%lx\" -> \"%lx\" [label=\"calls: %lu\"];\n", (UINT32)node->parent, (UINT32)node, node->counter);
 	
-	if (strcmp("<unknown>", node->info)) {
-		char* compact = strtok(node->info, " "); // TODO - this is a demo!		
+	if (strcmp("<unknown>", node->routine_info)) {
+		char* compact = strtok(node->routine_info, " "); // TODO - this is a demo!		
 		fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)node, compact);	
-	} else fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)node, node->info);	
+	} else fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)node, node->routine_info);	
 		
 	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
 		printGraphvizAux(tmp, out);
@@ -64,7 +65,7 @@ void printGraphvizAux(hcct_node_t* node, FILE* out) {
 
 void printGraphviz(hcct_tree_t* tree, FILE* out) {
 	fprintf(out, "digraph HCCT{\n");
-	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)tree->root, tree->root->info);
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)tree->root, tree->root->routine_info);
 	
 	hcct_node_t* child;
 	for (child=tree->root->first_child; child!=NULL; child=child->next_sibling)
@@ -111,14 +112,14 @@ int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, c
 	}
 }
 
-// TODO: call sites, shared libraries
+// TODO: call sites
 void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t* map) {	
 	#define BUFLEN 512
 	FILE* fp;
 	char buf[BUFLEN+1];
 		
-	char* command=malloc(13+strlen(tree->program_path)+1+strlen(tree->short_name)+10+8+1); // 8 characters for 32 bit address	
-	sprintf(command, "addr2line -e %s/%s -f -s -p %lx", tree->program_path, tree->short_name, addr);
+	char* command=malloc(16+strlen(tree->program_path)+1+strlen(tree->short_name)+10+8+1); // 8 characters for 32 bit address	
+	sprintf(command, "addr2line -e %s/%s -f -s -p -C %lx", tree->program_path, tree->short_name, addr);
 		
 	fp=popen(command, "r");
 	if (fp == NULL) {
@@ -143,13 +144,13 @@ void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t
 	pclose(fp);		
 	
 	// Try to solve it manually...
-	
+	char* short_pathname;
 	for ( ; map!=NULL; map=map->next)
 		if (addr >= map->start && addr <= map->end) {			
-			if (map->pathname[0]=='/') { // [heap], [stack] ...
+			if (map->pathname[0]=='/') { // [heap], [stack] ...				
 				UINT32 offset= addr - map->start;				
-				command=malloc(13+strlen(map->pathname)+10+8+13+1); // 8 characters for 32 bit address	
-				sprintf(command, "addr2line -e %s -f -s -p %lx 2> /dev/null", map->pathname, offset);
+				command=malloc(16+strlen(map->pathname)+10+8+13+1); // 8 characters for 32 bit address	
+				sprintf(command, "addr2line -e %s -f -s -p -C %lx 2> /dev/null", map->pathname, offset);
 				fp=popen(command, "r");
 			
 				if (fp == NULL) {
@@ -163,22 +164,24 @@ void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t
 				if (fgets(buf, BUFLEN, fp) != NULL)
 					if (buf[0]!='?' && buf[1]!='?') { // addr2line worked!
 						buf[strlen(buf)-1]='\0';
-						*s=malloc(1+strlen(map->pathname)+2+strlen(buf)+1);
-						sprintf(*s, "[%s] %s", map->pathname, buf);
+						short_pathname=basename(map->pathname); // TODO
+						*s=malloc(1+strlen(short_pathname)+2+strlen(buf)+1);
+						sprintf(*s, "[%s] %s", short_pathname, buf);
 						pclose(fp);
 						return;						
 					}					
 				
-				// addr2line not executed, address not recognized or invalid format (e.g. .mo file)
-				*s=malloc(1+strlen(map->pathname)+2+8+4+8+1+8+1);
-				sprintf(*s, "[%s] %lx in %lx-%lx", map->pathname, addr, map->start, map->end);					
+				// addr2line not executed, address not recognized or invalid format
+				short_pathname=basename(map->pathname); // TODO
+				*s=malloc(1+strlen(short_pathname)+2+8+4+8+1+8+1);
+				sprintf(*s, "[%s] %lx in %lx-%lx", short_pathname, addr, map->start, map->end);					
 				
 				pclose(fp);					
 				return;					
 			}
 		}
 			
-	*s="<unknown>";	// address not even in the map!
+	*s="<unknown>";	// address not in the map!
 	
 	#undef BUFLEN
 }
@@ -337,8 +340,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     int stack_idx=0;
     UINT32 nodes=0;
     
-    UINT32 node_id, parent_id, counter, routine_id;
-    UINT16 call_site;
+    UINT32 node_id, parent_id, counter, routine_id, call_site;    
         
     // Create root node
     hcct_node_t* root=malloc(sizeof(hcct_node_t));    
@@ -361,7 +363,8 @@ hcct_tree_t* createTree(FILE* logfile) {
             exit(1);
     }
     s++;
-    root->info="<dummy root node>";
+    root->routine_info="<dummy root node>";
+    root->call_site_info="<dummy root node>";
     root->parent=NULL;
     root->first_child=NULL;
     root->next_sibling=NULL;
@@ -369,7 +372,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     s++;
     root->routine_id=strtoul(s, &s, 16);
     s++;
-    root->call_site=(unsigned short)strtoul(s, &s, 16);
+    root->call_site=strtoul(s, &s, 16);
     if (root->counter!=1 || root->routine_id!=0 || root->call_site!=0) {
             printf("Error: there's something strange in root node data (counter, routine_id or call_site)!\n");
             exit(1);
@@ -400,9 +403,11 @@ hcct_tree_t* createTree(FILE* logfile) {
         s++;
         node->routine_id=strtoul(s, &s, 16);
         s++;
-        node->call_site=(unsigned short)strtoul(s, &s, 16);
+        node->call_site=strtoul(s, &s, 16);
         
-        getFunctionFromAddress(&(node->info), node->routine_id, tree, map);
+        // solve addresses
+        getFunctionFromAddress(&(node->routine_info), node->routine_id, tree, map);
+        getFunctionFromAddress(&(node->call_site_info), node->call_site, tree, map);
                 
         // Attach node to the tree
         while (tree_stack[stack_idx].id!=parent_id && stack_idx>=0)
@@ -566,10 +571,10 @@ int main(int argc, char* argv[]) {
     UINT32 closest=largerThanHottest(tree->root, 10, hottest); // TAU=10
     printf("Hottest nodes for TAU=10: %lu\n", closest);
     
-    //~ // print tree to screen
-    //~ printf("\n");
-    //~ printTree(tree->root, 0);
-    //~ printf("\n");
+    // print tree to screen
+    printf("\n");
+    printTree(tree->root, 0);
+    printf("\n");
             
     // create graphviz output file
     FILE* outgraph;
