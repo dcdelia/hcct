@@ -153,7 +153,7 @@ void hcct_align() {
 #endif
 
 
-void hcct_enter(UINT32 routine_id, UINT16 call_site)
+void hcct_enter(UINT32 routine_id, UINT32 call_site)
 {
     cct_node_t *parent=cct_stack[cct_stack_idx++];
     cct_node_t *node;
@@ -199,7 +199,7 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
 		#if DUMP_TREE==1
 		// Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
 		// Addresses in hexadecimal notation (useful for addr2line)
-		fprintf(out, "v %lx %lx %lu %lx %hx\n", (unsigned long)root, (unsigned long)(parent),
+		fprintf(out, "v %lx %lx %lu %lx %lx\n", (unsigned long)root, (unsigned long)(parent),
 		                                        root->counter, root->routine_id, root->call_site);
         #endif
         

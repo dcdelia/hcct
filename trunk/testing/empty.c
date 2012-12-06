@@ -13,7 +13,7 @@ int hcct_init() {
     return 0;
 }
 
-void hcct_enter(UINT32 routine_id, UINT16 call_site) {
+void hcct_enter(UINT32 routine_id, UINT32 call_site) {
 }
 
 void hcct_exit() {
