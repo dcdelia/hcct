@@ -177,7 +177,7 @@ static void __attribute__((no_instrument_function)) prune(lss_hcct_node_t* node)
     pool_free(node, free_list);
 }
 
-void hcct_enter(UINT32 routine_id, UINT32 call_site) {
+void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
 
 	++lss_enter_events;
 	
@@ -460,19 +460,15 @@ void hcct_dump()
 	    int ds;
 	    // up to 10 digits for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
 	    // TODO FIX %d 10 digits
-	    char *dumpFileName;	    
-	    if (dumpPath==NULL) {
-	        dumpFileName=malloc(strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0
+	    char dumpFileName[BUFLEN+1];	    
+	    if (dumpPath==NULL) {	        
 	        sprintf(dumpFileName, "%s-%d.tree", program_invocation_short_name, tid);
-        } else {
-            dumpFileName=malloc(strlen(dumpPath)+1+strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0
+        } else {            
 	        sprintf(dumpFileName, "%s/%s-%d.tree", dumpPath, program_invocation_short_name, tid);
         }
         ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
         if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
-        out = fdopen(ds, "w");    
-
-	    char* cwd=getcwd(NULL, 0);
+        out = fdopen(ds, "w");    	    
 	    	    	    
 	    #if BURSTING
 	    // c <tool> <epsilon> <sampling_interval> <burst_length> <burst_enter_events>
@@ -483,10 +479,10 @@ void hcct_dump()
 	    #endif
 	    
 	    // c <command> <process/thread id> <working directory>
+	    char* cwd=getcwd(NULL, 0);
 	    fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);
-	    
-	    free(dumpFileName);
 	    free(cwd);
+	    
 	    #endif
 	
 	hcct_dump_aux(out, hcct_get_root(), &nodes);

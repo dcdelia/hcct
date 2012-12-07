@@ -10,7 +10,6 @@
 #include <string.h>
 #define _GNU_SOURCE
 #include <errno.h>
-//extern char *program_invocation_name;
 extern char *program_invocation_short_name;
 
 // timer globals
@@ -48,7 +47,7 @@ void hcct_dump_map() {
 	pid_t pid=syscall(__NR_getpid);
 		
 	// Command to be executed: "cp /proc/<PID>/maps <name>.map\0" => 9+10+6+variable+5 bytes needed
-	char* command=malloc(strlen(program_invocation_short_name)+30);
+	char command[BUFLEN+1];
 	sprintf(command, "cp /proc/%d/maps %s.map", pid, program_invocation_short_name);
 	
 	int ret=system(command);
@@ -69,11 +68,11 @@ void __attribute__((no_instrument_function)) timerThread(void* arg)
     while(1)
     {
         if (burst_on!=0) {
-            //~ printf("Disabling bursting\n");
+            // Disabling bursting
             burst_on=0;
             clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &disabled, NULL);
         } else {
-            //~ printf("Enabling bursting\n");
+            // Enabling bursting
             burst_on=1;
             clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &enabled, NULL);
         }

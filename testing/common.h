@@ -5,6 +5,10 @@
 #define UINT32 unsigned long
 #define UINT16 unsigned short
 
+#define ADDRINT	unsigned long
+#define BUFLEN 512
+
+#define DEFAULT_EPSILON 10000
 #define STACK_MAX_DEPTH	1024
 #define PAGE_SIZE		1024
 #define SHOW_MESSAGES   0

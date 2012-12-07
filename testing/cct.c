@@ -153,7 +153,7 @@ void hcct_align() {
 #endif
 
 
-void hcct_enter(UINT32 routine_id, UINT32 call_site)
+void hcct_enter(ADDRINT routine_id, ADDRINT call_site)
 {
     cct_node_t *parent=cct_stack[cct_stack_idx++];
     cct_node_t *node;
@@ -218,19 +218,16 @@ void hcct_dump()
         #if DUMP_TREE==1
         int ds;
 	    // up to 10 digits for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
-	    char *dumpFileName;	    
+	    char dumpFileName[BUFLEN+1];	    
 	    if (dumpPath==NULL) {
-	        dumpFileName=malloc(strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0
 	        sprintf(dumpFileName, "%s-%d.tree", program_invocation_short_name, tid);
-        } else {
-            dumpFileName=malloc(strlen(dumpPath)+1+strlen(program_invocation_short_name)+17); // suffix: -PID.tree\0
+        } else {            
 	        sprintf(dumpFileName, "%s/%s-%d.tree", dumpPath, program_invocation_short_name, tid);
         }
         ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
         if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
         out = fdopen(ds, "w");    
-	    
-	    char* cwd=getcwd(NULL, 0);
+	    	    
 	    
 	    #if BURSTING
 	    // c <tool> <sampling_interval> <burst_length> <burst_enter_events>    
@@ -241,9 +238,8 @@ void hcct_dump()
 	    #endif
 	    
 	    // c <command> <process/thread id> <working directory>
-	    fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);
-	    
-	    free(dumpFileName);
+	    char* cwd=getcwd(NULL, 0);
+	    fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);	    
 	    free(cwd);
 	    #endif
 	

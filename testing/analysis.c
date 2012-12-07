@@ -55,8 +55,8 @@ void printGraphvizAux(hcct_node_t* node, FILE* out) {
 	
 	hcct_node_t* tmp;
 	
-	fprintf(out, "\"%lx\" -> \"%lx\" [label=\"calls: %lu\"];\n", (UINT32)node->parent, (UINT32)node, node->counter);	
-	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)node, node->routine_sym->name);
+	fprintf(out, "\"%lx\" -> \"%lx\" [label=\"calls: %lu\"];\n", (ADDRINT)node->parent, (ADDRINT)node, node->counter);	
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (ADDRINT)node, node->routine_sym->name);
 		
 	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
 		printGraphvizAux(tmp, out);
@@ -65,7 +65,7 @@ void printGraphvizAux(hcct_node_t* node, FILE* out) {
 
 void printGraphviz(hcct_tree_t* tree, FILE* out) {
 	fprintf(out, "digraph HCCT{\n");
-	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)tree->root, tree->root->routine_sym->name);
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (ADDRINT)tree->root, tree->root->routine_sym->name);
 	
 	hcct_node_t* child;
 	for (child=tree->root->first_child; child!=NULL; child=child->next_sibling)
@@ -95,9 +95,9 @@ void printD3json(hcct_node_t* node, FILE* out) {
 
 
 // process line from /proc maps file
-int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, char** pathname) {
+int parseMemoryMapLine(char* line, ADDRINT *start, ADDRINT *end, ADDRINT *offset, char** pathname) {
 
-	UINT32 tmp;
+	ADDRINT tmp;
 	char *s;	
 	
 	// start address
@@ -134,7 +134,7 @@ int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, c
 	return 0;
 }
 
-hcct_sym_t* getFunctionFromAddress(UINT32 addr, hcct_tree_t* tree, hcct_map_t* map) {	
+hcct_sym_t* getFunctionFromAddress(ADDRINT addr, hcct_tree_t* tree, hcct_map_t* map) {	
 	FILE* fp;
 	char buf[BUFLEN+1], command[BUFLEN+1];
 	hcct_sym_t* sym=malloc(sizeof(hcct_sym_t));
@@ -171,7 +171,7 @@ hcct_sym_t* getFunctionFromAddress(UINT32 addr, hcct_tree_t* tree, hcct_map_t* m
 	for ( ; map!=NULL; map=map->next)
 		if (addr >= map->start && addr <= map->end) {			
 			if (map->pathname[0]!='[' && strcmp(map->pathname, "<unknown>")) { // avoid [heap], [stack] ...				
-				UINT32 offset= addr - map->start;								
+				ADDRINT offset= addr - map->start;								
 				
 				sprintf(command, "addr2line -e %s -f -s -C %lx 2> /dev/null", map->pathname, offset);
 				fp=popen(command, "r");			
@@ -399,7 +399,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     int stack_idx=0;
     UINT32 nodes=0;
     
-    UINT32 node_id, parent_id;    
+    ADDRINT node_id, parent_id;    
         
     // Create root node
     hcct_node_t* root=malloc(sizeof(hcct_node_t));
