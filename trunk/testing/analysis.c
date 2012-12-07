@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <libgen.h>
+#include <libgen.h> // basename()
 
 #include "analysis.h"
 
@@ -40,7 +40,10 @@ void printTree(hcct_node_t* node, int level) {
 	
 	printf("|=");	
 	for (i=0; i<level; ++i) printf("=");
-	printf("> (%lu) %s FROM %s\n", node->counter, node->routine_info, node->call_site_info);
+	if (node->routine_sym->image[0]=='/')	
+		printf("> (%lu) %s in %s [%s]\n", node->counter, node->routine_sym->name, node->routine_sym->file, basename(node->routine_sym->image));
+	else
+		printf("> (%lu) %s in %s [%s]\n", node->counter, node->routine_sym->name, node->routine_sym->file, node->routine_sym->image);
 	
 	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
 		printTree(tmp, level+1);	
@@ -51,12 +54,8 @@ void printGraphvizAux(hcct_node_t* node, FILE* out) {
 	
 	hcct_node_t* tmp;
 	
-	fprintf(out, "\"%lx\" -> \"%lx\" [label=\"calls: %lu\"];\n", (UINT32)node->parent, (UINT32)node, node->counter);
-	
-	if (strcmp("<unknown>", node->routine_info)) {
-		char* compact = strtok(node->routine_info, " "); // TODO - this is a demo!		
-		fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)node, compact);	
-	} else fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)node, node->routine_info);	
+	fprintf(out, "\"%lx\" -> \"%lx\" [label=\"calls: %lu\"];\n", (UINT32)node->parent, (UINT32)node, node->counter);	
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)node, node->routine_sym->name);
 		
 	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
 		printGraphvizAux(tmp, out);
@@ -65,7 +64,7 @@ void printGraphvizAux(hcct_node_t* node, FILE* out) {
 
 void printGraphviz(hcct_tree_t* tree, FILE* out) {
 	fprintf(out, "digraph HCCT{\n");
-	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)tree->root, tree->root->routine_info);
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (UINT32)tree->root, tree->root->routine_sym->name);
 	
 	hcct_node_t* child;
 	for (child=tree->root->first_child; child!=NULL; child=child->next_sibling)
@@ -73,6 +72,26 @@ void printGraphviz(hcct_tree_t* tree, FILE* out) {
 	
 	fprintf(out, "}\n");
 }
+
+void printD3json(hcct_node_t* node, FILE* out) {
+	if (node==NULL) return;
+	
+	fprintf(out, "{\"name\": \"%s\"\n", node->routine_sym->name);
+	
+	hcct_node_t* tmp;
+	if (node->first_child!=NULL) {
+		fprintf(out, ", \"children\": [\n");
+		printD3json(node->first_child, out);
+		for (tmp=node->first_child->next_sibling; tmp!=NULL; tmp=tmp->next_sibling) {
+			fprintf(out, ", ");
+			printD3json(tmp, out);
+		}
+		fprintf(out, "]");
+	}
+	
+	fprintf(out, "}");
+}
+
 
 // process line from /proc maps file
 int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, char** pathname) {
@@ -112,9 +131,99 @@ int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, c
 	}
 }
 
+
+hcct_sym_t* getFunctionFromAddress(UINT32 addr, hcct_tree_t* tree, hcct_map_t* map) {	
+	FILE* fp;
+	char buf[BUFLEN+1], command[BUFLEN+1];
+	hcct_sym_t* sym=malloc(sizeof(hcct_sym_t));
+	
+	sprintf(command, "addr2line --e %s/%s -f -s -C %lx", tree->program_path, tree->short_name, addr);
+	fp=popen(command, "r");
+	if (fp == NULL) {
+		printf("Error: unable to execute addr2line!");
+		exit(1);
+	}
+	
+	if (fgets(buf, BUFLEN, fp) != NULL) {				
+		if (buf[0]!='?' && buf[1]!='?') { // addr2line worked!						
+			buf[strlen(buf)-1]='\0';
+			sym->name=strdup(buf);						
+			if (fgets(buf, BUFLEN, fp) != NULL) { // addr2line will produce two output lines								
+				buf[strlen(buf)-1]='\0';
+				sym->file=strdup(buf);								
+				sym->image=strdup(tree->short_name);				
+				pclose(fp);
+				return sym;
+			} else {
+				printf("Error: addr2line does not work!");
+				exit(1);
+			}
+		} // else: try to solve it later
+	} else {
+		printf("Error: addr2line does not work!");
+		exit(1);
+	}
+		
+	pclose(fp);			
+		
+	for ( ; map!=NULL; map=map->next)
+		if (addr >= map->start && addr <= map->end) {			
+			if (map->pathname[0]!='[' && strcmp(map->pathname, "<unknown>")) { // avoid [heap], [stack] ...				
+				UINT32 offset= addr - map->start;								
+				
+				sprintf(command, "addr2line -e %s -f -s -C %lx 2> /dev/null", map->pathname, offset);
+				fp=popen(command, "r");			
+				if (fp == NULL) {
+					printf("Error: unable to execute addr2line!");
+					exit(1);
+				}
+				
+				// addr2line on a shared library
+				if (fgets(buf, BUFLEN, fp) != NULL)
+					if (buf[0]!='?' && buf[1]!='?') { // addr2line worked!
+						buf[strlen(buf)-1]='\0';
+						sym->name=strdup(buf);
+						if (fgets(buf, BUFLEN, fp) != NULL) { // addr2line will produce two output lines
+							buf[strlen(buf)-1]='\0';
+							sym->file=strdup(buf);							
+							sym->image=strdup(map->pathname);
+							pclose(fp);
+							return sym;						
+						} else {
+							printf("Error: addr2line does not work!");
+							exit(1);	
+						}
+					}					
+				
+				// addr2line not executed, address not recognized or invalid format
+				sprintf(buf, "%lx", addr);
+				sym->name=strdup(buf);
+				sprintf(buf, "%lx-%lx", map->start, map->end);
+				sym->file=strdup(buf);
+				sym->image=strdup(map->pathname);
+								
+				pclose(fp);					
+				return sym;					
+			} else {
+				sprintf(buf, "%lx", addr);
+				sym->name=strdup(buf);
+				sprintf(buf, "%lx-%lx", map->start, map->end);
+				sym->file=strdup(buf);
+				sym->image=strdup(map->pathname);
+				return sym;
+			}
+		}
+			
+	// address is not in the map!
+	sprintf(buf, "%lx", addr);
+	sym->name=strdup(buf);
+	sym->file="<unknown>";
+	sym->image="<unknown>";	
+	return sym;
+}
+
 // TODO: call sites
-void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t* map) {	
-	#define BUFLEN 512
+void getFunctionFromAddress_old(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t* map) {	
 	FILE* fp;
 	char buf[BUFLEN+1];
 		
@@ -182,8 +291,6 @@ void getFunctionFromAddress(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t
 		}
 			
 	*s="<unknown>";	// address not in the map!
-	
-	#undef BUFLEN
 }
 
 // create data structure for memory mapped regions
@@ -204,13 +311,13 @@ hcct_map_t* createMemoryMap(char* program) {
     free(filename);
     
     // parse file
-    char buf[BUF+1];
+    char buf[BUFLEN+1];
     char *s;
 
 	hcct_map_t* first=(hcct_map_t*)malloc(sizeof(hcct_map_t));
 	first->next=NULL;
 	
-	if (fgets(buf, BUF, mapfile)==NULL) {
+	if (fgets(buf, BUFLEN, mapfile)==NULL) {
 		printf("Warning: file containing memory mapped regions is broken!\n");
 		free(filename);
 		free(first);
@@ -224,7 +331,7 @@ hcct_map_t* createMemoryMap(char* program) {
 	parseMemoryMapLine(buf, &(first->start), &(first->end), &(first->offset), &(first->pathname));
 	hcct_map_t *next=first, *tmp;
 	
-	while (fgets(buf, BUF, mapfile)!=NULL) {
+	while (fgets(buf, BUFLEN, mapfile)!=NULL) {
 		tmp=(hcct_map_t*)malloc(sizeof(hcct_map_t));		
 		// TODO: valore di ritorno
 		parseMemoryMapLine(buf, &(tmp->start), &(tmp->end), &(tmp->offset), &(tmp->pathname));
@@ -241,7 +348,7 @@ hcct_map_t* createMemoryMap(char* program) {
 
 // create tree in memory
 hcct_tree_t* createTree(FILE* logfile) {    
-    char buf[BUF+1];
+    char buf[BUFLEN+1];
     char *s;
     
     hcct_tree_t *tree=malloc(sizeof(hcct_tree_t));
@@ -251,7 +358,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     // c <command> <process/thread id> <working directory>
     
     // First row
-    if (fgets(buf, BUF, logfile)==NULL) {
+    if (fgets(buf, BUFLEN, logfile)==NULL) {
 		printf("Error: broken logfile\n");
 		exit(1);
 	}
@@ -305,7 +412,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     }
     
     // Second row
-    if (fgets(buf, BUF, logfile)==NULL) {
+    if (fgets(buf, BUFLEN, logfile)==NULL) {
 		printf("Error: broken logfile\n");
 		exit(1);
 	}
@@ -345,7 +452,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     // Create root node
     hcct_node_t* root=malloc(sizeof(hcct_node_t));    
     
-    if (fgets(buf, BUF, logfile)==NULL) {
+    if (fgets(buf, BUFLEN, logfile)==NULL) {
 		printf("Error: broken logfile\n");
 		exit(1);
 	}
@@ -363,11 +470,7 @@ hcct_tree_t* createTree(FILE* logfile) {
             exit(1);
     }
     s++;
-    root->routine_info="<dummy root node>";
-    root->call_site_info="<dummy root node>";
-    root->parent=NULL;
-    root->first_child=NULL;
-    root->next_sibling=NULL;
+        
     root->counter=strtoul(s, &s, 0);    
     s++;
     root->routine_id=strtoul(s, &s, 16);
@@ -377,12 +480,28 @@ hcct_tree_t* createTree(FILE* logfile) {
             printf("Error: there's something strange in root node data (counter, routine_id or call_site)!\n");
             exit(1);
     }
+    
+    // remaining fields    
+    root->routine_sym=malloc(sizeof(hcct_sym_t));
+    root->routine_sym->name="<dummy>";
+    root->routine_sym->file="<dummy>";    
+    root->routine_sym->image=strdup(tree->short_name);
+    
+    root->call_site_sym=malloc(sizeof(hcct_sym_t));
+    root->call_site_sym->name="<dummy>";
+    root->call_site_sym->file="<dummy>";
+    root->routine_sym->image=strdup(tree->short_name);
+        
+    root->parent=NULL;
+    root->first_child=NULL;
+    root->next_sibling=NULL;
+    
     nodes++;    
         
     // Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>    
     hcct_node_t *node, *parent, *tmp;
     while(1) {
-        if (fgets(buf, BUF, logfile)==NULL) {
+        if (fgets(buf, BUFLEN, logfile)==NULL) {
 			printf("Error: broken logfile\n");
 			exit(1);
 		}
@@ -406,8 +525,8 @@ hcct_tree_t* createTree(FILE* logfile) {
         node->call_site=strtoul(s, &s, 16);
         
         // solve addresses
-        getFunctionFromAddress(&(node->routine_info), node->routine_id, tree, map);
-        getFunctionFromAddress(&(node->call_site_info), node->call_site, tree, map);
+        node->routine_sym=getFunctionFromAddress(node->routine_id, tree, map);
+        node->call_site_sym=getFunctionFromAddress(node->call_site, tree, map);
                 
         // Attach node to the tree
         while (tree_stack[stack_idx].id!=parent_id && stack_idx>=0)
@@ -575,34 +694,42 @@ int main(int argc, char* argv[]) {
     printf("\n");
     printTree(tree->root, 0);
     printf("\n");
+    
+    // to be reused from now on!
+    char tmp_buf[BUFLEN+1];
+    char command[BUFLEN+1];
             
     // create graphviz output file
-    FILE* outgraph;
-    char* outgraph_name=malloc(strlen(tree->short_name)+1+10+4+1);
-    sprintf(outgraph_name, "%s-%lu.dot", tree->short_name, tree->tid);
+    FILE* outgraph;    
+    sprintf(tmp_buf, "%s-%lu.dot", tree->short_name, tree->tid);
+    char* outgraph_name=strdup(tmp_buf); // will be reused later!
     outgraph=fopen(outgraph_name, "w+"); // same size
     printf("Saving HCCT in GraphViz file %s...", outgraph_name);
     printGraphviz(tree, outgraph);
     printf(" done!\n");    
     fclose(outgraph);
     
-    // create png graph
-    char* imgname=strdup(outgraph_name);
-    sprintf(imgname, "%s-%lu.png", tree->short_name, tree->tid);    
-    char* command=malloc(10+strlen(outgraph_name)+4+strlen(imgname)+1);
-    sprintf(command, "dot -Tpng %s -o %s", outgraph_name, imgname);        
+    // create png graph        
+    sprintf(tmp_buf, "%s-%lu.png", tree->short_name, tree->tid);        
+    sprintf(command, "dot -Tpng %s -o %s &> /dev/null", outgraph_name, tmp_buf);        
 	if (system(command)!=0) printf("Please check that GraphViz is installed in order to generate PNG graph!\n");
-	else printf("PNG graph %s generated successfully!\n", imgname);
+	else printf("PNG graph %s generated successfully!\n", tmp_buf);
 	
 	// create svg graph (very useful for large graphs)
-	sprintf(imgname, "%s-%lu.svg", tree->short_name, tree->tid);
-	sprintf(command, "dot -Tsvg %s -o %s", outgraph_name, imgname);	
+	sprintf(tmp_buf, "%s-%lu.svg", tree->short_name, tree->tid);
+	sprintf(command, "dot -Tsvg %s -o %s &> /dev/null", outgraph_name, tmp_buf);	
 	if (system(command)!=0) printf("Please check that GraphViz is installed in order to generate SVG graph!\n");
-	else printf("SVG graph %s generated successfully!\n", imgname);
-        
+	else printf("SVG graph %s generated successfully!\n", tmp_buf);	
 	free(outgraph_name);
-    free(imgname);
-    free(command);    
+           
+    // create JSON file for D3	
+    FILE* outjson;
+    sprintf(tmp_buf, "%s-%lu.json", tree->short_name, tree->tid);
+    printf("Saving HCCT in JSON file %s for D3...", tmp_buf); 
+    outjson=fopen(tmp_buf, "w+");
+    printD3json(tree->root, outjson);
+    printf(" done!\n\n");
+    fclose(outjson);
     
     freeTree(tree);
     return 0;
