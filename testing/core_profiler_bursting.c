@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <unistd.h> // syscall()
 #include <asm/unistd.h> // syscall(__NR_gettid)
 #include <sys/types.h> // pid_t, timer_t
 

@@ -78,9 +78,9 @@ tracer: Makefile tracer.c tracer.h example.c
 		@mkdir -p test
 		$(CC) -o test/tracer example.c -L./libs -lhcct_tracer $(INSTR)
 		
-tools:	Makefile analysis.c common.h analysis.h		
+tools:	Makefile analysis.c analysis.h common.h
 		@mkdir -p tools
-		$(CC) -o tools/analysis analysis.c -lm
+		$(CC) -g -o tools/analysis analysis.c -lm
 
 clean:	
 		rm -rf libs tools test

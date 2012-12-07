@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <unistd.h> // syscall()
 #include <asm/unistd.h> // syscall(__NR_gettid)
 #include <sys/types.h> // pid_t
 
