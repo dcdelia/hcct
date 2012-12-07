@@ -29,7 +29,7 @@ extern char *program_invocation_short_name;
 		pid_t pid=syscall(__NR_getpid);
 			
 		char command[BUFLEN+1];	
-		sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name);
+		sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
 	
 		int ret=system(command);
 		if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");		

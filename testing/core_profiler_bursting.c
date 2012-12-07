@@ -22,7 +22,7 @@ unsigned long   burst_length;
 #include "common.h"
 
 // TLS
-__thread UINT64	burst_enter_events;
+__thread UINT64	exhaustive_enter_events;
 
 // shadow stack - legal values from 0 up to shadow_stack_idx-1
 __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
@@ -131,7 +131,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         aligned=1;
         
         // Total number of rtn enter events
-		burst_enter_events=0;
+		exhaustive_enter_events=0;
         
         // Initializing hcct module        
         if (hcct_init()==-1) {
@@ -167,7 +167,7 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
 // Routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
-	++burst_enter_events;
+	++exhaustive_enter_events;
 		
 	
 	// Shadow stack
@@ -221,7 +221,7 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
         aligned=1;
         
         // Total number of rtn enter events
-		burst_enter_events=0;
+		exhaustive_enter_events=0;
         
         hcct_init();
 

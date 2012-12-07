@@ -53,9 +53,8 @@ struct hcct_tree_s {
     UINT32          burst_length;
     double          epsilon;
     double          phi;
-    UINT64			enter_events; // total number of [sampled] rtn enter events
-    UINT64			burst_enter_events; /* total number of rtn enter events
-									(0 if exhaustive analysis is performed) */
+    UINT64			sampled_enter_events;
+    UINT64			exhaustive_enter_events; 
 };
 
 typedef struct hcct_map_s hcct_map_t;
