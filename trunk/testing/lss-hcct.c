@@ -37,7 +37,7 @@ char*   dumpPath;
 __thread unsigned			stack_idx;
 __thread lss_hcct_node_t	*stack[STACK_MAX_DEPTH];
 __thread lss_hcct_node_t	*hcct_root;
-__thread pool_t				*node_pool;
+__thread pool_t				*hcct_pool;
 __thread void				*free_list;
 __thread UINT32				min, min_idx, num_queue_items, second_min_idx;
 __thread lss_hcct_node_t	**queue;
@@ -91,7 +91,7 @@ lss_hcct_node_t* hcct_get_root() {
 }
 
 #if INLINE_UPD_MIN==0
-void update_min() __attribute__((no_instrument_function))
+static void update_min() __attribute__((no_instrument_function))
 {
 
     #if 0 // O(n) - classic minimum search
@@ -204,7 +204,7 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
 
     // add new child to parent
     else {
-        pool_alloc(node_pool, free_list, 
+        pool_alloc(hcct_pool, free_list, 
                    node, lss_hcct_node_t);
         node->routine_id    = routine_id;
         node->call_site     = call_site;
@@ -315,15 +315,15 @@ void hcct_exit()
 int hcct_init()
 {
     // initialize custom memory allocator
-    node_pool = 
+    hcct_pool = 
         pool_init(PAGE_SIZE, sizeof(lss_hcct_node_t), &free_list);
-    if (node_pool == NULL) {
+    if (hcct_pool == NULL) {
 			printf("[hcct] error while initializing allocator... Quitting!\n");
             return -1;
 	}
     
     // create dummy root node
-    pool_alloc(node_pool, free_list, hcct_root, lss_hcct_node_t);
+    pool_alloc(hcct_pool, free_list, hcct_root, lss_hcct_node_t);
     if (hcct_root == NULL) {
 			printf("[hcct] error while initializing hcct root node... Quitting!\n");
 			return -1;
@@ -344,13 +344,13 @@ int hcct_init()
     // create lazy priority queue
     #if UPDATE_MIN_SENTINEL == 1
     queue = (lss_hcct_node_t**)malloc((epsilon+1)*sizeof(lss_hcct_node_t*));
-    pool_alloc(node_pool, free_list, queue[epsilon], lss_hcct_node_t);
+    pool_alloc(hcct_pool, free_list, queue[epsilon], lss_hcct_node_t);
     if (queue[epsilon] == NULL) {
 			printf("[hcct] error while initializing lazy priority queue... Quitting!\n");
 			return -1;
 	}
     queue[epsilon]->counter = min = 0;
-    #else
+    #else    
     queue = (lss_hcct_node_t**)malloc(epsilon*sizeof(lss_hcct_node_t*));
     #endif
     if (queue == NULL) {
@@ -430,8 +430,7 @@ void hcct_align() {
 }
 #endif
 
-
-void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out, lss_hcct_node_t* root, unsigned long *nodes)
+static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out, lss_hcct_node_t* root, unsigned long *nodes)
 {
         if (root==NULL) return;
         
@@ -498,4 +497,8 @@ void hcct_dump()
 	    printf("[thread: %d] Total number of routine enter events: %llu\n", tid, lss_enter_events);
         #endif
 	#endif
+	
+	// Free memory used by custom allocator and by lazy priority queue
+	pool_cleanup(hcct_pool);
+	free(queue);
 }
