@@ -30,7 +30,7 @@ extern char *program_invocation_short_name;
 
 // global parameters set by hcct_getenv()
 UINT32  epsilon;
-UINT32  phi;
+double	epsilon_d;
 char*   dumpPath;
 
 // thread local storage
@@ -61,53 +61,24 @@ extern __thread int                shadow_stack_idx;
 int hcct_getenv() {
 	char *value;
 	
-	char *end; // strtod()
 	double d;
     
 	value=getenv("EPSILON");
-	if (value == NULL || value[0]=='\0')
+	if (value == NULL || value[0]=='\0') {
 	    epsilon=EPSILON;
-    else {
-    /* // Old format: integer value specified as 1/epsilon
-        epsilon=strtoul(value, NULL, 0);
-        if (epsilon==0) {
-            epsilon=EPSILON;
-            printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%lu) instead\n", epsilon);
-        }
-    */
-		d=strtod(value, &end);
+	    epsilon_d=1.0/EPSILON;
+    } else {
+		d=strtod(value, NULL);
 		if (d<=0 || d>1.0) { // 0 is an error code
             epsilon=EPSILON;
-            printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%f) instead\n", 1.0/epsilon);
+            epsilon_d=1.0/EPSILON;
+            printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%f) instead\n", epsilon_d);
         } else {
 			epsilon=(UINT32)ceil(1.0/d);
+			epsilon_d=d;
 		}	
     }
-    
-    value=getenv("PHI");
-	if (value == NULL || value[0]=='\0')
-	    phi=PHI;
-    else {
-        /* //Old format
-        phi=strtoul(value, NULL, 0);
-        if (phi==0) {
-            phi=PHI;
-            printf("[hcct] WARNING: invalid value specified for PHI, using default (%lu) instead\n", phi);            
-        }
-        */
-        d=strtod(value, &end);
-		if (d<=0 || d >= 1.0) { // 0 is an error code
-            phi=epsilon/10;
-            printf("[hcct] WARNING: invalid value specified for PHI, using default (PHI=10*EPSILON) instead\n");
-        } else {
-			phi=(UINT32)ceil(1.0/d);
-			if (phi>=EPSILON) {
-				phi=epsilon/10;
-				printf("[hcct] WARNING: PHI must be greater than EPSILON, using PHI=10*EPSILON instead");
-			}
-		}	        
-    }
-    
+        
     dumpPath=getenv("DUMPPATH");
 	if (dumpPath == NULL || dumpPath[0]=='\0')
 	    dumpPath=NULL;
@@ -504,11 +475,11 @@ void hcct_dump()
 	    char* cwd=getcwd(NULL, 0);
 	    	    	    
 	    #if BURSTING
-	    // c <tool> <epsilon> <phi> <sampling_interval> <burst_length> <burst_enter_events>
-	    fprintf(out, "c lss-hcct-burst %lu %lu %lu %lu %llu\n", epsilon, phi, sampling_interval, burst_length, burst_enter_events);	    	    
+	    // c <tool> <epsilon> <sampling_interval> <burst_length> <burst_enter_events>
+	    fprintf(out, "c lss-hcct-burst %f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, burst_enter_events);	    	    
 	    #else
-	    // c <tool> <epsilon> <phi>
-	    fprintf(out, "c lss-hcct %lu %lu\n", epsilon, phi);	    	    
+	    // c <tool> <epsilon>
+	    fprintf(out, "c lss-hcct %f\n", epsilon_d);	    	    
 	    #endif
 	    
 	    // c <command> <process/thread id> <working directory>

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <libgen.h> // basename()
+#include <locale.h> // setlocale()
 
 #include "analysis.h"
 
@@ -124,19 +125,20 @@ int parseMemoryMapLine(char* line, UINT32 *start, UINT32 *end, UINT32 *offset, c
 	// pathname
 	s=strtok(NULL, " ");
 	if (strlen(s)==1) {
-		*pathname="<unknown>";
+		*pathname=strdup("<unknown>");
 	} else {
 		s[strlen(s)-1]='\0';
 		*pathname=strdup(s);
 	}
+	
+	return 0;
 }
-
 
 hcct_sym_t* getFunctionFromAddress(UINT32 addr, hcct_tree_t* tree, hcct_map_t* map) {	
 	FILE* fp;
 	char buf[BUFLEN+1], command[BUFLEN+1];
 	hcct_sym_t* sym=malloc(sizeof(hcct_sym_t));
-	
+		
 	sprintf(command, "addr2line --e %s/%s -f -s -C %lx", tree->program_path, tree->short_name, addr);
 	fp=popen(command, "r");
 	if (fp == NULL) {
@@ -217,80 +219,9 @@ hcct_sym_t* getFunctionFromAddress(UINT32 addr, hcct_tree_t* tree, hcct_map_t* m
 	// address is not in the map!
 	sprintf(buf, "%lx", addr);
 	sym->name=strdup(buf);
-	sym->file="<unknown>";
-	sym->image="<unknown>";	
+	sym->file=strdup("<unknown>");
+	sym->image=strdup("<unknown>");	
 	return sym;
-}
-
-// TODO: call sites
-void getFunctionFromAddress_old(char** s, UINT32 addr, hcct_tree_t* tree, hcct_map_t* map) {	
-	FILE* fp;
-	char buf[BUFLEN+1];
-		
-	char* command=malloc(16+strlen(tree->program_path)+1+strlen(tree->short_name)+10+8+1); // 8 characters for 32 bit address	
-	sprintf(command, "addr2line -e %s/%s -f -s -p -C %lx", tree->program_path, tree->short_name, addr);
-		
-	fp=popen(command, "r");
-	if (fp == NULL) {
-		printf("Error: unable to execute addr2line!");
-		exit(1);
-	}
-	
-	free(command);
-    
-	if (fgets(buf, BUFLEN, fp) != NULL) {
-		if (buf[0]!='?' && buf[1]!='?') { // addr2line worked!
-			buf[strlen(buf)-1]='\0';
-			*s=strdup(buf);
-			pclose(fp);
-			return;
-		} // else: try to solve it manually (see below)
-	} else {
-		printf("Error: addr2line does not work!");
-		exit(1);
-	}
-
-	pclose(fp);		
-	
-	// Try to solve it manually...
-	char* short_pathname;
-	for ( ; map!=NULL; map=map->next)
-		if (addr >= map->start && addr <= map->end) {			
-			if (map->pathname[0]=='/') { // [heap], [stack] ...				
-				UINT32 offset= addr - map->start;				
-				command=malloc(16+strlen(map->pathname)+10+8+13+1); // 8 characters for 32 bit address	
-				sprintf(command, "addr2line -e %s -f -s -p -C %lx 2> /dev/null", map->pathname, offset);
-				fp=popen(command, "r");
-			
-				if (fp == NULL) {
-					printf("Error: unable to execute addr2line!");
-					exit(1);
-				}
-				
-				free(command);				
-				
-				// addr2line on a shared library
-				if (fgets(buf, BUFLEN, fp) != NULL)
-					if (buf[0]!='?' && buf[1]!='?') { // addr2line worked!
-						buf[strlen(buf)-1]='\0';
-						short_pathname=basename(map->pathname); // TODO
-						*s=malloc(1+strlen(short_pathname)+2+strlen(buf)+1);
-						sprintf(*s, "[%s] %s", short_pathname, buf);
-						pclose(fp);
-						return;						
-					}					
-				
-				// addr2line not executed, address not recognized or invalid format
-				short_pathname=basename(map->pathname); // TODO
-				*s=malloc(1+strlen(short_pathname)+2+8+4+8+1+8+1);
-				sprintf(*s, "[%s] %lx in %lx-%lx", short_pathname, addr, map->start, map->end);					
-				
-				pclose(fp);					
-				return;					
-			}
-		}
-			
-	*s="<unknown>";	// address not in the map!
 }
 
 // create data structure for memory mapped regions
@@ -311,8 +242,7 @@ hcct_map_t* createMemoryMap(char* program) {
     free(filename);
     
     // parse file
-    char buf[BUFLEN+1];
-    char *s;
+    char buf[BUFLEN+1];    
 
 	hcct_map_t* first=(hcct_map_t*)malloc(sizeof(hcct_map_t));
 	first->next=NULL;
@@ -324,17 +254,22 @@ hcct_map_t* createMemoryMap(char* program) {
 		return NULL;
 	}
 	
-	UINT32 start, end, offset;
-	char* pathname;
-
-	// TODO: valore di ritorno
-	parseMemoryMapLine(buf, &(first->start), &(first->end), &(first->offset), &(first->pathname));
+	int ret;
+	ret=parseMemoryMapLine(buf, &(first->start), &(first->end), &(first->offset), &(first->pathname));
+	if (ret) {
+			printf("Error: map file seems to be broken!\n");
+			exit(1);
+	}
+	
 	hcct_map_t *next=first, *tmp;
 	
 	while (fgets(buf, BUFLEN, mapfile)!=NULL) {
-		tmp=(hcct_map_t*)malloc(sizeof(hcct_map_t));		
-		// TODO: valore di ritorno
-		parseMemoryMapLine(buf, &(tmp->start), &(tmp->end), &(tmp->offset), &(tmp->pathname));
+		tmp=(hcct_map_t*)malloc(sizeof(hcct_map_t));			
+		ret=parseMemoryMapLine(buf, &(tmp->start), &(tmp->end), &(tmp->offset), &(tmp->pathname));
+		if (ret) {
+			printf("Error: map file seems to be broken!\n");
+			exit(1);
+		}
 		next->next=tmp;
 		next=tmp;		
 	}
@@ -346,15 +281,27 @@ hcct_map_t* createMemoryMap(char* program) {
 	return first;    
 }
 
+void freeMemoryMap(hcct_map_t* map) {
+	hcct_map_t *m1, *m2;
+	
+	for (m1=map; m1!=NULL; ) {
+		m2=m1->next;		
+		free(m1->pathname);
+		free(m1);
+		m1=m2;
+	}
+}
+
 // create tree in memory
 hcct_tree_t* createTree(FILE* logfile) {    
     char buf[BUFLEN+1];
     char *s;
     
     hcct_tree_t *tree=malloc(sizeof(hcct_tree_t));
+    tree->phi=0;
         
     // Syntax of the first two rows
-    // c <tool> [<epsilon> <phi>] [<sampling_interval> <burst_length> <burst_enter_events>]
+    // c <tool> [<epsilon>] [<sampling_interval> <burst_length> <burst_enter_events>]
     // c <command> <process/thread id> <working directory>
     
     // First row
@@ -370,21 +317,24 @@ hcct_tree_t* createTree(FILE* logfile) {
     s=strtok(NULL, " ");
         
     if (strcmp(s, CCT_FULL_STRING)==0) {	
-        tree->tool=CCT_FULL;        
+        tree->tool=CCT_FULL;
+        tree->epsilon=0;
         tree->burst_enter_events=0;
         printf("Log generated by tool: %s\n", CCT_FULL_STRING); // CCT_FULL_STRING ends by \n
-        tree->epsilon=0;
     } else if (strcmp(s, LSS_FULL_STRING)==0) {
         tree->tool=LSS_FULL;
         tree->burst_enter_events=0;
         s=strtok(NULL, " ");        
-        tree->epsilon=strtoul(s, &s, 0);
-        s++;
-        tree->phi=strtoul(s, &s, 0);
+        tree->epsilon=strtod(s, &s);
+        if (tree->epsilon==0) {
+			setlocale(LC_NUMERIC,"");
+			tree->epsilon=strtod(s, &s);
+		}        
         printf("Log generated by tool: %s\n", LSS_FULL_STRING);
-        printf("Parameters: epsilon=%lu phi=%lu\n", tree->epsilon, tree->phi);        
-    } else if (strcmp(s, CCT_BURST_STRING)==0) {
+        printf("Parameters: epsilon=%f\n", tree->epsilon);        
+    } else if (strcmp(s, CCT_BURST_STRING)==0) {        
         tree->tool=CCT_BURST;
+        tree->epsilon=0;
         s=strtok(NULL, " ");        
         tree->sampling_interval=strtoul(s, &s, 0);
         s++;
@@ -397,9 +347,11 @@ hcct_tree_t* createTree(FILE* logfile) {
     } else if (strcmp(s, LSS_BURST_STRING)==0) {
         tree->tool=LSS_BURST;
         s=strtok(NULL, " ");        
-        tree->epsilon=strtoul(s, &s, 0);
-        s++;
-        tree->phi=strtoul(s, &s, 0);
+        tree->epsilon=strtod(s, &s);
+        if (tree->epsilon==0) {
+			setlocale(LC_NUMERIC,"");
+			tree->epsilon=strtod(s, &s);
+		}
         s++;
         tree->sampling_interval=strtoul(s, &s, 0);
         s++;
@@ -407,8 +359,8 @@ hcct_tree_t* createTree(FILE* logfile) {
         s++;
         tree->burst_enter_events=strtoull(s, &s, 0);
         printf("Log generated by tool: %s\n", LSS_BURST_STRING);
-        printf("Parameters: epsilon=%lu phi=%lu sampling_interval=%lu burst_length=%lu burst_enter_events=%llu\n",
-                tree->epsilon, tree->phi, tree->sampling_interval, tree->burst_length, tree->burst_enter_events);
+        printf("Parameters: epsilon=%f sampling_interval=%lu (ns) burst_length=%lu (ns) burst_enter_events=%llu\n",
+                tree->epsilon, tree->sampling_interval, tree->burst_length, tree->burst_enter_events);
     }
     
     // Second row
@@ -439,7 +391,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     printf("Instrumented program:");
     printf(" %s %s (TID: %lu)\n", tree->program_path, tree->short_name, tree->tid);
     
-    // CHECK LOG PATH
+    // create map from .map file    
     hcct_map_t* map=createMemoryMap(tree->short_name);	
 
     // I need a stack to reconstruct the tree
@@ -447,10 +399,13 @@ hcct_tree_t* createTree(FILE* logfile) {
     int stack_idx=0;
     UINT32 nodes=0;
     
-    UINT32 node_id, parent_id, counter, routine_id, call_site;    
+    UINT32 node_id, parent_id;    
         
     // Create root node
-    hcct_node_t* root=malloc(sizeof(hcct_node_t));    
+    hcct_node_t* root=malloc(sizeof(hcct_node_t));
+    root->parent=NULL;
+    root->first_child=NULL;
+    root->next_sibling=NULL;  
     
     if (fgets(buf, BUFLEN, logfile)==NULL) {
 		printf("Error: broken logfile\n");
@@ -483,18 +438,14 @@ hcct_tree_t* createTree(FILE* logfile) {
     
     // remaining fields    
     root->routine_sym=malloc(sizeof(hcct_sym_t));
-    root->routine_sym->name="<dummy>";
-    root->routine_sym->file="<dummy>";    
+    root->routine_sym->name=strdup("<dummy>");
+    root->routine_sym->file=strdup("<dummy>");    
     root->routine_sym->image=strdup(tree->short_name);
     
     root->call_site_sym=malloc(sizeof(hcct_sym_t));
-    root->call_site_sym->name="<dummy>";
-    root->call_site_sym->file="<dummy>";
-    root->routine_sym->image=strdup(tree->short_name);
-        
-    root->parent=NULL;
-    root->first_child=NULL;
-    root->next_sibling=NULL;
+    root->call_site_sym->name=strdup("<dummy>");
+    root->call_site_sym->file=strdup("<dummy>");    
+    root->call_site_sym->image=strdup(tree->short_name);
     
     nodes++;    
         
@@ -513,7 +464,10 @@ hcct_tree_t* createTree(FILE* logfile) {
             exit(1);
         }
         
-        node=malloc(sizeof(hcct_node_t));
+        node=malloc(sizeof(hcct_node_t));        
+		node->first_child=NULL;
+		node->next_sibling=NULL;
+		
         node_id=strtoul(&buf[2], &s, 16);
         s++;    
         parent_id=strtoul(s, &s, 16);
@@ -536,9 +490,7 @@ hcct_tree_t* createTree(FILE* logfile) {
             exit(1);            
         }        
         parent=tree_stack[stack_idx].node;
-        node->parent=parent;
-        node->first_child=NULL;
-        node->next_sibling=NULL;
+        node->parent=parent;        
         if (parent->first_child==NULL)
             parent->first_child=node;
         else {
@@ -568,19 +520,39 @@ hcct_tree_t* createTree(FILE* logfile) {
         
     printf("Tree has been built.\n");
     
+    freeMemoryMap(map);
+    
     return tree;
 }
 
-void freeTreeAux(hcct_node_t* root) {
-    hcct_node_t *ptr;
-    for (ptr=root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
+void freeSym(hcct_sym_t* sym) {
+	if (sym==NULL) return; // for safety
+	free(sym->name);
+	free(sym->file);
+	free(sym->image);
+	free(sym);
+}
+
+void freeTreeAux(hcct_node_t* node) {	
+    //if (node==NULL) return; // not needed
+    hcct_node_t *ptr, *tmp;
+    for (ptr=node->first_child; ptr!=NULL;) {
+		tmp=ptr->next_sibling;
         freeTreeAux(ptr);
-    free(root);
+        ptr=tmp;
+    }
+    
+    freeSym(node->routine_sym);
+    freeSym(node->call_site_sym);
+    free(node);    
 }
 
 void freeTree(hcct_tree_t* tree) {
+    hcct_node_t *ptr;
     if (tree->root!=NULL)
-        freeTreeAux(tree->root);
+		freeTreeAux(tree->root);	
+	free(tree->short_name);
+	free(tree->program_path);
     free(tree);
     printf("Tree has been deleted from memory.\n");
 }
@@ -657,26 +629,25 @@ int main(int argc, char* argv[]) {
     hcct_tree_t *tree;
     tree=createTree(logfile);    
     fclose(logfile);
-       
+
     UINT64 stream_length=tree->burst_enter_events;
     if (stream_length==0) stream_length=tree->enter_events;
     printf("\nBefore pruning, tree has %lu nodes and stream length is %llu\n", tree->nodes, stream_length);
     
     if (tree->epsilon==0 && ( tree->tool==CCT_FULL || tree->tool == CCT_BURST ) ) {
-		if (phi==0) tree->epsilon=DEFAULT_EPSILON;
-		else tree->epsilon=ceil(1/phi)*10;
+		if (phi==0) tree->epsilon=1.0/DEFAULT_EPSILON;
+		else tree->epsilon=phi*10;
     }
     
-    if (phi==0) phi=(double)(1.0/(tree->epsilon/10));
-	else if (ceil(1.0/phi) >= tree->epsilon) {
-		phi=1.0/(tree->epsilon/10);
+    if (phi==0) phi=tree->epsilon*10;
+	else if (phi <= tree->epsilon) {
+		phi=tree->epsilon*10;
 		printf("WARNING: PHI must be greater than EPSILON, using PHI=10*EPSILON instead");
 	}
 	
 	printf("\nValue chosen for phi: %f\n", phi);
-		
-    UINT32 min_counter=(UINT32)(phi*stream_length);
-        
+	tree->phi=phi;	
+    UINT32 min_counter=(UINT32)(phi*stream_length);    
     pruneTree(tree, tree->root, min_counter);
     
     //printf("Value chosen for phi: %f\n", phi);
@@ -730,7 +701,8 @@ int main(int argc, char* argv[]) {
     printD3json(tree->root, outjson);
     printf(" done!\n\n");
     fclose(outjson);
-    
+       
     freeTree(tree);
+            
     return 0;
 }

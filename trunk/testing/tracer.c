@@ -197,7 +197,7 @@ void __attribute__((no_instrument_function)) TraceWriter_Close(TraceWriter* tr){
     unsigned long long tmp=tr->ticks - tr->firstTick; // number of ticks since thread start
     
     if ( fseeko(tr->out, (off_t) sizeof(unsigned long), SEEK_SET) == -1 ) {
-		printf("[tracer] Error: could not perform fseeko() on output file! Exiting...\n", errno);
+		printf("[tracer] Error %d: could not perform fseeko() on output file! Exiting...\n", errno);
         exit(EXIT_FAILURE);		
 	}
     
