@@ -430,72 +430,61 @@ void hcct_align() {
 }
 #endif
 
+#if DUMP_TREE==1
 static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out, lss_hcct_node_t* root, unsigned long *nodes)
 {
-        if (root==NULL) return;
+	if (root==NULL) return;
         
-        (*nodes)++;
-        lss_hcct_node_t* ptr;
+	(*nodes)++;
+	lss_hcct_node_t* ptr;
 
-		#if DUMP_TREE==1
-		// Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
-		// Addresses in hexadecimal notation (useful for addr2line)
-		fprintf(out, "v %lx %lx %lu %lx %lx\n", (unsigned long)root, (unsigned long)(root->parent),
-		                                        root->counter, root->routine_id, root->call_site);
-        #endif
+	// Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
+	// Addresses in hexadecimal notation (useful for addr2line)
+	fprintf(out, "v %lx %lx %lu %lx %lx\n", (unsigned long)root, (unsigned long)(root->parent),
+	                                        root->counter, root->routine_id, root->call_site);
         
-        for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
-                hcct_dump_aux(out, ptr, nodes);
+	for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
+		hcct_dump_aux(out, ptr, nodes);
 }
+#endif
 
 void hcct_dump()
 {
-	#if DUMP_STATS==1 || DUMP_TREE==1
+	#if DUMP_TREE==1
 	unsigned long nodes=0;
 	FILE* out;
 	pid_t tid=syscall(__NR_gettid);	    
 	
-	    #if DUMP_TREE==1
-	    int ds;
-	    // up to 10 digits for PID on 64 bits systems - however check /proc/sys/kernel/pid_max
-	    // TODO FIX %d 10 digits
-	    char dumpFileName[BUFLEN+1];	    
-	    if (dumpPath==NULL) {	        
-	        sprintf(dumpFileName, "%s-%d.tree", program_invocation_short_name, tid);
-        } else {            
-	        sprintf(dumpFileName, "%s/%s-%d.tree", dumpPath, program_invocation_short_name, tid);
-        }
-        ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
-        if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
-        out = fdopen(ds, "w");    	    
+    int ds;	    
+    char dumpFileName[BUFLEN+1];	    
+    if (dumpPath==NULL) {	        
+        sprintf(dumpFileName, "%s-%d.tree", program_invocation_short_name, tid);
+    } else {            
+		sprintf(dumpFileName, "%s/%s-%d.tree", dumpPath, program_invocation_short_name, tid);
+    }
+    ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
+    if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
+    out = fdopen(ds, "w");    	    
 	    	    	    
-	    #if BURSTING
-	    // c <tool> <epsilon> <sampling_interval> <burst_length> <burst_enter_events>
-	    fprintf(out, "c lss-hcct-burst %f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, burst_enter_events);	    	    
-	    #else
-	    // c <tool> <epsilon>
-	    fprintf(out, "c lss-hcct %f\n", epsilon_d);	    	    
-	    #endif
+    #if BURSTING
+	// c <tool> <epsilon> <sampling_interval> <burst_length> <burst_enter_events>
+	fprintf(out, "c lss-hcct-burst %f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, burst_enter_events);	    	    
+	#else
+	// c <tool> <epsilon>
+	fprintf(out, "c lss-hcct %f\n", epsilon_d);	    	    
+	#endif
 	    
-	    // c <command> <process/thread id> <working directory>
-	    char* cwd=getcwd(NULL, 0);
-	    fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);
-	    free(cwd);
-	    
-	    #endif
-	
+	// c <command> <process/thread id> <working directory>
+	char* cwd=getcwd(NULL, 0);
+	fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);
+	free(cwd);
+	    	
 	hcct_dump_aux(out, hcct_get_root(), &nodes);
 	
-	    #if DUMP_TREE==1
-	    // p <nodes> <enter_events>
-	    fprintf(out, "p %lu %llu\n", nodes, lss_enter_events); // #nodes used for a sanity check in the analysis tool
-	    fclose(out);
-	    #endif
-	    
-	    #if DUMP_STATS==1
-	    printf("[thread: %d] Total number of nodes: %lu\n", tid, nodes);
-	    printf("[thread: %d] Total number of routine enter events: %llu\n", tid, lss_enter_events);
-        #endif
+    // p <nodes> <enter_events>
+    fprintf(out, "p %lu %llu\n", nodes, lss_enter_events); // #nodes used for a sanity check in the analysis tool
+    fclose(out);
+
 	#endif
 	
 	// Free memory used by custom allocator and by lazy priority queue

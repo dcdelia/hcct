@@ -1,6 +1,8 @@
 #ifndef __ANALYSIS__
 #define __ANALYSIS__
 
+#include <sys/types.h> // pid_t
+
 #include "common.h"
 
 // Discriminate tool used to create logfile
@@ -44,7 +46,7 @@ struct hcct_tree_s {
     hcct_node_t*    root;
     char			*short_name;
     char			*program_path;
-    UINT32			tid;
+    pid_t			tid;
     unsigned short  tool;    
     UINT32          nodes;
     UINT32          sampling_interval;
