@@ -3,9 +3,6 @@
 
 #include "common.h"
 
-#define BUFLEN 512
-#define DEFAULT_EPSILON 10000
-
 // Discriminate tool used to create logfile
 #define CCT_FULL    1
 #define LSS_FULL    2
@@ -26,8 +23,8 @@ struct hcct_sym_s {
 
 typedef struct hcct_node_s hcct_node_t;
 struct hcct_node_s {
-    UINT32          routine_id;
-    UINT32          call_site;
+    ADDRINT         routine_id;
+    ADDRINT         call_site;
     UINT32          counter;
     hcct_sym_t*		routine_sym;
     hcct_sym_t*		call_site_sym;        
@@ -39,7 +36,7 @@ struct hcct_node_s {
 typedef struct hcct_pair_s hcct_pair_t;
 struct hcct_pair_s {
     hcct_node_t*    node;
-    UINT32          id;
+    ADDRINT          id;
 };
 
 typedef struct hcct_tree_s hcct_tree_t;
@@ -61,10 +58,10 @@ struct hcct_tree_s {
 
 typedef struct hcct_map_s hcct_map_t;
 struct hcct_map_s {
-	UINT32		start;
-	UINT32		end;	
+	ADDRINT		start;
+	ADDRINT		end;	
 	char*		pathname;
-	UINT32		offset; // offset into the file - TODO
+	ADDRINT		offset; // offset into the file - TODO
 	hcct_map_t*	next;
 };
 
