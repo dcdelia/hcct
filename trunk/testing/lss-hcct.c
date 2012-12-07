@@ -49,7 +49,7 @@ extern unsigned long    sampling_interval;
 extern unsigned long    burst_length;
 extern unsigned short   burst_on;   // enable or disable bursting
 extern __thread int     aligned;
-extern __thread UINT64	burst_enter_events;
+extern __thread UINT64	exhaustive_enter_events;
 
 // legal values go from 0 to shadow_stack_idx-1
 extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
@@ -467,8 +467,8 @@ void hcct_dump()
     out = fdopen(ds, "w");    	    
 	    	    	    
     #if BURSTING
-	// c <tool> <epsilon> <sampling_interval> <burst_length> <burst_enter_events>
-	fprintf(out, "c lss-hcct-burst %f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, burst_enter_events);	    	    
+	// c <tool> <epsilon> <sampling_interval> <burst_length> <exhaustive_enter_events>
+	fprintf(out, "c lss-hcct-burst %f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, exhaustive_enter_events);	    	    
 	#else
 	// c <tool> <epsilon>
 	fprintf(out, "c lss-hcct %f\n", epsilon_d);	    	    
