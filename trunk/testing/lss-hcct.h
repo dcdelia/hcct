@@ -3,11 +3,6 @@
 
 #include "common.h"
 
-#define INLINE_UPD_MIN          1
-#define UPDATE_MIN_SENTINEL     1
-#define KEEP_EPS				0
-#define EPSILON					DEFAULT_EPSILON
-
 typedef struct lss_hcct_node_s lss_hcct_node_t;
 struct lss_hcct_node_s {
     ADDRINT          routine_id;    

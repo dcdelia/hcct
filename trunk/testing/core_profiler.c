@@ -22,18 +22,20 @@ extern char *program_invocation_short_name;
 #endif
 #endif
 
-#ifndef PROFILER_EMPTY
-void hcct_dump_map() {
+#if DUMP_TREE==1
+	#ifndef PROFILER_EMPTY
+	static void __attribute__ ((no_instrument_function)) hcct_dump_map() {
 	
-	pid_t pid=syscall(__NR_getpid);
+		pid_t pid=syscall(__NR_getpid);
 			
-	char command[BUFLEN+1];	
-	sprintf(command, "cp -f /proc/%d/maps %s.map", pid, program_invocation_short_name);
+		char command[BUFLEN+1];	
+		sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name);
 	
-	int ret=system(command);
-	if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");	
-			
-}
+		int ret=system(command);
+		if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");		
+	
+	}
+	#endif
 #endif
  
 // execute before main
@@ -61,8 +63,10 @@ void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
         printf("[profiler] program exit - tid %d\n", syscall(__NR_gettid));
         #endif
         
-        #ifndef PROFILER_EMPTY
-        hcct_dump_map();
+        #if DUMP_TREE==1
+			#ifndef PROFILER_EMPTY
+			hcct_dump_map();
+			#endif
         #endif
                 
         hcct_dump();

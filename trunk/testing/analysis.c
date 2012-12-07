@@ -4,6 +4,7 @@
 #include <math.h>
 #include <libgen.h> // basename()
 #include <locale.h> // setlocale()
+#include <sys/types.h> // pid_t
 
 #include "analysis.h"
 
@@ -29,14 +30,13 @@ void freeTreeAux(hcct_node_t* node) {
     free(node);    
 }
 
-void freeTree(hcct_tree_t* tree) {
-    hcct_node_t *ptr;
+void freeTree(hcct_tree_t* tree) {    
     if (tree->root!=NULL) // for safety
 		freeTreeAux(tree->root);	
 	free(tree->short_name);
 	free(tree->program_path);
     free(tree);
-    printf("Tree has been deleted from memory.\n");
+    printf("\nTree has been deleted from memory.\n");
 }
 
 // remove from tree every node such that node->counter <= min_counter (Space Saving algorithm)
@@ -424,10 +424,10 @@ hcct_tree_t* createTree(FILE* logfile) {
 		tree->short_name=strdup(short_name);
     
     tree->program_path=strdup(program_path);
-    tree->tid=strtoul(tid, NULL, 0);
+    tree->tid=(pid_t)strtol(tid, NULL, 0);
     
     printf("Instrumented program:");
-    printf(" %s %s (TID: %lu)\n", tree->program_path, tree->short_name, tree->tid);
+    printf(" %s %s (TID: %d)\n", tree->program_path, tree->short_name, tree->tid);
     
     // create map from .map file    
     hcct_map_t* map=createMemoryMap(tree->short_name);	
@@ -556,7 +556,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     
     tree->root=root;
         
-    printf("Tree has been built.\n");
+    printf("\nTree has been built.\n");
     
     freeMemoryMap(map);
     
@@ -641,7 +641,7 @@ int main(int argc, char* argv[]) {
     printf("\nBefore pruning, tree has %lu nodes and stream length is %llu\n", tree->nodes, stream_length);
     
     if (tree->epsilon==0 && ( tree->tool==CCT_FULL || tree->tool == CCT_BURST ) ) {
-		if (phi==0) tree->epsilon=1.0/DEFAULT_EPSILON;
+		if (phi==0) tree->epsilon=1.0/EPSILON;
 		else tree->epsilon=phi*10;
     }
     
@@ -674,11 +674,11 @@ int main(int argc, char* argv[]) {
     
     // to be reused from now on!
     char tmp_buf[BUFLEN+1];
-    char command[BUFLEN+1];
+    //char command[BUFLEN+1];
             
     // create graphviz output file
     FILE* outgraph;    
-    sprintf(tmp_buf, "%s-%lu.dot", tree->short_name, tree->tid);
+    sprintf(tmp_buf, "%s-%d.dot", tree->short_name, tree->tid);
     char* outgraph_name=strdup(tmp_buf); // will be reused later!
     outgraph=fopen(outgraph_name, "w+"); // same size
     printf("Saving HCCT in GraphViz file %s...", outgraph_name);
@@ -688,13 +688,13 @@ int main(int argc, char* argv[]) {
     
     /* Currently almost useless
     // create png graph        
-    sprintf(tmp_buf, "%s-%lu.png", tree->short_name, tree->tid);        
+    sprintf(tmp_buf, "%s-%d.png", tree->short_name, tree->tid);        
     sprintf(command, "dot -Tpng %s -o %s &> /dev/null", outgraph_name, tmp_buf);        
 	if (system(command)!=0) printf("Please check that GraphViz is installed in order to generate PNG graph!\n");
 	else printf("PNG graph %s generated successfully!\n", tmp_buf);
 	
 	// create svg graph (very useful for large graphs)
-	sprintf(tmp_buf, "%s-%lu.svg", tree->short_name, tree->tid);
+	sprintf(tmp_buf, "%s-%d.svg", tree->short_name, tree->tid);
 	sprintf(command, "dot -Tsvg %s -o %s &> /dev/null", outgraph_name, tmp_buf);	
 	if (system(command)!=0) printf("Please check that GraphViz is installed in order to generate SVG graph!\n");
 	else printf("SVG graph %s generated successfully!\n", tmp_buf);	
@@ -704,7 +704,7 @@ int main(int argc, char* argv[]) {
     /* Currently almost useless
     // create JSON file for D3	
     FILE* outjson;
-    sprintf(tmp_buf, "%s-%lu.json", tree->short_name, tree->tid);
+    sprintf(tmp_buf, "%s-%d.json", tree->short_name, tree->tid);
     printf("Saving HCCT in JSON file %s for D3...", tmp_buf); 
     outjson=fopen(tmp_buf, "w+");
     printD3json(tree->root, outjson);

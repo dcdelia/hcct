@@ -3,7 +3,7 @@
 
 #include "common.h"
 
-// Sistemare qui
+// TODO
 #ifndef USE_MALLOC
 #define USE_MALLOC 0
 #else
