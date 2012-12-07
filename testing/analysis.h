@@ -3,7 +3,7 @@
 
 #include "common.h"
 
-#define BUF 500
+#define BUFLEN 512
 #define DEFAULT_EPSILON 10000
 
 // Discriminate tool used to create logfile
@@ -17,13 +17,20 @@
 #define CCT_BURST_STRING    "cct-burst"
 #define LSS_BURST_STRING    "lss-hcct-burst"
 
+typedef struct hcct_sym_s hcct_sym_t;
+struct hcct_sym_s {
+	char*	name;	// addr2line or <unknown> or address
+	char*	file;	// addr2line or range
+	char*	image;	// from /proc/self/maps or program_short_name
+};
+
 typedef struct hcct_node_s hcct_node_t;
 struct hcct_node_s {
     UINT32          routine_id;
     UINT32          call_site;
     UINT32          counter;
-    char*			routine_info;
-    char*			call_site_info;    
+    hcct_sym_t*		routine_sym;
+    hcct_sym_t*		call_site_sym;        
     hcct_node_t*    first_child;
     hcct_node_t*    next_sibling;
     hcct_node_t*    parent;
@@ -57,7 +64,7 @@ struct hcct_map_s {
 	UINT32		start;
 	UINT32		end;	
 	char*		pathname;
-	UINT32		offset; // offset into the file - man proc (5)
+	UINT32		offset; // offset into the file - TODO
 	hcct_map_t*	next;
 };
 
