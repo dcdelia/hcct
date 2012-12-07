@@ -207,6 +207,20 @@ void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
                 hcct_dump_aux(out, ptr, nodes, cct_enter_events, root);		
 }
 
+#if USE_MALLOC
+static void __attribute__((no_instrument_function)) free_cct(cct_node_t* node) {
+	// free(NULL) is ok
+   
+   cct_node_t *ptr, *tmp;
+    for (ptr=node->first_child; ptr!=NULL;) {
+		tmp=ptr->next_sibling;
+        free_cct(ptr);
+        ptr=tmp;
+    }    
+    free(node);
+}
+#endif
+
 void hcct_dump()
 {
 	#if DUMP_STATS==1 || DUMP_TREE==1
@@ -257,4 +271,11 @@ void hcct_dump()
         #endif
 	#endif
 	
+	#if USE_MALLOC==0
+	// Free memory used by custom allocator
+	pool_cleanup(cct_pool);
+	#else
+	// Recursively free the CCT
+	free_cct(cct_root);
+	#endif
 }

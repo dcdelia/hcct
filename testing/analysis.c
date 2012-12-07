@@ -7,13 +7,49 @@
 
 #include "analysis.h"
 
+void freeSym(hcct_sym_t* sym) {
+	if (sym==NULL) return; // for safety
+	free(sym->name);
+	free(sym->file);
+	free(sym->image);
+	free(sym);
+}
+
+void freeTreeAux(hcct_node_t* node) {	
+    //if (node==NULL) return; // not needed
+    hcct_node_t *ptr, *tmp;
+    for (ptr=node->first_child; ptr!=NULL;) {
+		tmp=ptr->next_sibling;
+        freeTreeAux(ptr);
+        ptr=tmp;
+    }
+    
+    freeSym(node->routine_sym);
+    freeSym(node->call_site_sym);
+    free(node);    
+}
+
+void freeTree(hcct_tree_t* tree) {
+    hcct_node_t *ptr;
+    if (tree->root!=NULL) // for safety
+		freeTreeAux(tree->root);	
+	free(tree->short_name);
+	free(tree->program_path);
+    free(tree);
+    printf("Tree has been deleted from memory.\n");
+}
+
 // remove from tree every node such that node->counter <= min_counter (Space Saving algorithm)
 void pruneTree(hcct_tree_t* tree, hcct_node_t* node, UINT32 min_counter) {
 	if (node==NULL) return;
 	
-	hcct_node_t* tmp;
-	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
-		pruneTree(tree, tmp, min_counter);
+	hcct_node_t *ptr, *tmp;
+		
+	for (ptr=node->first_child; ptr!=NULL; ) {
+		tmp=ptr->next_sibling;
+		pruneTree(tree, ptr, min_counter);
+		ptr=tmp;		
+	}
 			
 	if (node->counter <= min_counter && node->first_child == NULL && node->routine_id != 0) {
 		// detach node from the tree
@@ -28,6 +64,8 @@ void pruneTree(hcct_tree_t* tree, hcct_node_t* node, UINT32 min_counter) {
 			}
 		}
 		tree->nodes--;
+		freeSym(node->routine_sym);
+		freeSym(node->call_site_sym);
 		free(node);
 	}
 }
@@ -525,38 +563,6 @@ hcct_tree_t* createTree(FILE* logfile) {
     return tree;
 }
 
-void freeSym(hcct_sym_t* sym) {
-	if (sym==NULL) return; // for safety
-	free(sym->name);
-	free(sym->file);
-	free(sym->image);
-	free(sym);
-}
-
-void freeTreeAux(hcct_node_t* node) {	
-    //if (node==NULL) return; // not needed
-    hcct_node_t *ptr, *tmp;
-    for (ptr=node->first_child; ptr!=NULL;) {
-		tmp=ptr->next_sibling;
-        freeTreeAux(ptr);
-        ptr=tmp;
-    }
-    
-    freeSym(node->routine_sym);
-    freeSym(node->call_site_sym);
-    free(node);    
-}
-
-void freeTree(hcct_tree_t* tree) {
-    hcct_node_t *ptr;
-    if (tree->root!=NULL)
-		freeTreeAux(tree->root);	
-	free(tree->short_name);
-	free(tree->program_path);
-    free(tree);
-    printf("Tree has been deleted from memory.\n");
-}
-
 // ---------------------------------------------------------------------
 //  routines adapted from metrics.c (PLDI version)
 // ---------------------------------------------------------------------
@@ -680,6 +686,7 @@ int main(int argc, char* argv[]) {
     printf(" done!\n");    
     fclose(outgraph);
     
+    /* Currently almost useless
     // create png graph        
     sprintf(tmp_buf, "%s-%lu.png", tree->short_name, tree->tid);        
     sprintf(command, "dot -Tpng %s -o %s &> /dev/null", outgraph_name, tmp_buf);        
@@ -691,8 +698,10 @@ int main(int argc, char* argv[]) {
 	sprintf(command, "dot -Tsvg %s -o %s &> /dev/null", outgraph_name, tmp_buf);	
 	if (system(command)!=0) printf("Please check that GraphViz is installed in order to generate SVG graph!\n");
 	else printf("SVG graph %s generated successfully!\n", tmp_buf);	
+	*/
 	free(outgraph_name);
            
+    /* Currently almost useless
     // create JSON file for D3	
     FILE* outjson;
     sprintf(tmp_buf, "%s-%lu.json", tree->short_name, tree->tid);
@@ -701,6 +710,7 @@ int main(int argc, char* argv[]) {
     printD3json(tree->root, outjson);
     printf(" done!\n\n");
     fclose(outjson);
+    */
        
     freeTree(tree);
             
