@@ -28,15 +28,15 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c
 		$(CC) -c lss-hcct.c
 		$(CC) -c pool.c		
 		@# empty profiler
-		$(CC) -c core_profiler.c -DPROFILER_EMPTY
-		$(CC) -shared empty.o core_profiler.o -o libhcct_empty.so $(WRAP)
+		$(CC) -c frequency.c -DPROFILER_EMPTY
+		$(CC) -shared empty.o frequency.o -o libhcct_empty.so $(WRAP)
 		@# cct profiler(s)
-		$(CC) -c core_profiler.c -DPROFILER_CCT
-		$(CC) -shared cct.o core_profiler.o pool.o -o libhcct_cct.so $(WRAP)
-		$(CC) -shared cct_malloc.o core_profiler.o pool.o -o libhcct_cct_malloc.so $(WRAP)
+		$(CC) -c frequency.c -DPROFILER_CCT
+		$(CC) -shared cct.o frequency.o pool.o -o libhcct_cct.so $(WRAP)
+		$(CC) -shared cct_malloc.o frequency.o pool.o -o libhcct_cct_malloc.so $(WRAP)
 		@# lss-hcct profiler
-		$(CC) -c core_profiler.c
-		$(CC) -shared lss-hcct.o core_profiler.o pool.o -o libhcct_lss.so $(WRAP)
+		$(CC) -c frequency.c
+		$(CC) -shared lss-hcct.o frequency.o pool.o -o libhcct_lss.so $(WRAP)
 		@mkdir -p libs
 		@mv *.so libs/
 		@rm -f *.o		
@@ -44,14 +44,14 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c
 libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h		
 		$(CC) -c pool.c
 		$(CC) -c empty.c -DBURSTING
-		$(CC) -c core_profiler_bursting.c -DPROFILER_EMPTY
-		$(CC) -shared empty.o core_profiler_bursting.o -o libhcct_empty_burst.so -lrt $(WRAP)
+		$(CC) -c frequency_bursting.c -DPROFILER_EMPTY
+		$(CC) -shared empty.o frequency_bursting.o -o libhcct_empty_burst.so -lrt $(WRAP)
 		$(CC) -c cct.c -DBURSTING
-		$(CC) -c core_profiler_bursting.c -DPROFILER_CCT		
-		$(CC) -shared cct.o core_profiler_bursting.o pool.o -o libhcct_cct_burst.so -lrt $(WRAP)
+		$(CC) -c frequency_bursting.c -DPROFILER_CCT		
+		$(CC) -shared cct.o frequency_bursting.o pool.o -o libhcct_cct_burst.so -lrt $(WRAP)
 		$(CC) -c lss-hcct.c -DBURSTING
-		$(CC) -c core_profiler_bursting.c
-		$(CC) -shared lss-hcct.o core_profiler_bursting.o pool.o -o libhcct_lss_burst.so -lrt $(WRAP)
+		$(CC) -c frequency_bursting.c
+		$(CC) -shared lss-hcct.o frequency_bursting.o pool.o -o libhcct_lss_burst.so -lrt $(WRAP)
 		@mkdir -p libs
 		@mv *.so libs/
 		@rm -f *.o
@@ -80,7 +80,7 @@ tracer: Makefile tracer.c tracer.h example.c
 		
 tools:	Makefile analysis.c analysis.h common.h
 		@mkdir -p tools
-		$(CC) -g -o tools/analysis analysis.c -lm
+		$(CC) -o tools/analysis analysis.c -lm
 
 clean:	
 		rm -rf libs tools test
