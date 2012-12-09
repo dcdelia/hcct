@@ -42,7 +42,8 @@ extern char *program_invocation_short_name;
 void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 {
         #if SHOW_MESSAGES==1
-        printf("[profiler] program start - tid %d\n", syscall(__NR_gettid));
+        pid_t tid=syscall(__NR_gettid);
+        printf("[profiler] program start - tid %d\n", tid);
         #endif
         
         if (hcct_getenv()!=0) {
@@ -60,7 +61,8 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 {
 		#if SHOW_MESSAGES==1
-        printf("[profiler] program exit - tid %d\n", syscall(__NR_gettid));
+		pid_t tid=syscall(__NR_gettid);
+        printf("[profiler] program exit - tid %d\n", tid);
         #endif
         
         #if DUMP_TREE==1
@@ -88,7 +90,8 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
 void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr)
 {
 		#if SHOW_MESSAGES==1
-		printf("[profiler] pthread_exit - tid %d\n", syscall(__NR_gettid));
+		pid_t tid=syscall(__NR_gettid);
+		printf("[profiler] pthread_exit - tid %d\n", tid);
 		#endif
 		
 		// Exit stuff
@@ -111,7 +114,8 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
         void* ret=(*start_routine)(orig_arg);
 
 		#if SHOW_MESSAGES==1
-        printf("[profiler] return - tid %d\n", syscall(__NR_gettid));
+		pid_t tid=syscall(__NR_gettid);
+        printf("[profiler] return - tid %d\n", tid);
         #endif
         
         // Exit stuff

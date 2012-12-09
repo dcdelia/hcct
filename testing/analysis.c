@@ -30,107 +30,26 @@ void freeTreeAux(hcct_node_t* node) {
     free(node);    
 }
 
+void freeMemoryMap(hcct_map_t* map) {
+	hcct_map_t *m1, *m2;
+	
+	for (m1=map; m1!=NULL; ) {
+		m2=m1->next;		
+		free(m1->pathname);
+		free(m1);
+		m1=m2;
+	}
+}
+
 void freeTree(hcct_tree_t* tree) {    
     if (tree->root!=NULL) // for safety
-		freeTreeAux(tree->root);	
+		freeTreeAux(tree->root);
+	freeMemoryMap(tree->map);	
 	free(tree->short_name);
 	free(tree->program_path);
     free(tree);
     printf("\nTree has been deleted from memory.\n");
 }
-
-// remove from tree every node such that node->counter <= min_counter (Space Saving algorithm)
-void pruneTree(hcct_tree_t* tree, hcct_node_t* node, UINT32 min_counter) {
-	if (node==NULL) return;
-	
-	hcct_node_t *ptr, *tmp;
-		
-	for (ptr=node->first_child; ptr!=NULL; ) {
-		tmp=ptr->next_sibling;
-		pruneTree(tree, ptr, min_counter);
-		ptr=tmp;		
-	}
-			
-	if (node->counter <= min_counter && node->first_child == NULL && node->routine_id != 0) {
-		// detach node from the tree
-		if (node->parent->first_child==node) {
-			node->parent->first_child=node->next_sibling;
-		} else {
-			for (tmp=node->parent->first_child; tmp!=NULL; tmp=tmp->next_sibling) {
-				if (tmp->next_sibling==node) {
-					tmp->next_sibling=node->next_sibling;
-					break;					
-				}
-			}
-		}
-		tree->nodes--;
-		freeSym(node->routine_sym);
-		freeSym(node->call_site_sym);
-		free(node);
-	}
-}
-
-// print tree to screen
-void printTree(hcct_node_t* node, int level) {
-	if (node==NULL) return;
-	
-	hcct_node_t* tmp;
-	int i;
-	
-	printf("|=");	
-	for (i=0; i<level; ++i) printf("=");
-	if (node->routine_sym->image[0]=='/')	
-		printf("> (%lu) %s in %s [%s]\n", node->counter, node->routine_sym->name, node->routine_sym->file, basename(node->routine_sym->image));
-	else
-		printf("> (%lu) %s in %s [%s]\n", node->counter, node->routine_sym->name, node->routine_sym->file, node->routine_sym->image);
-	
-	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
-		printTree(tmp, level+1);	
-}
-
-void printGraphvizAux(hcct_node_t* node, FILE* out) {
-	if (node==NULL) return;
-	
-	hcct_node_t* tmp;
-	
-	fprintf(out, "\"%lx\" -> \"%lx\" [label=\"calls: %lu\"];\n", (ADDRINT)node->parent, (ADDRINT)node, node->counter);	
-	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (ADDRINT)node, node->routine_sym->name);
-		
-	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
-		printGraphvizAux(tmp, out);
-	
-}
-
-void printGraphviz(hcct_tree_t* tree, FILE* out) {
-	fprintf(out, "digraph HCCT{\n");
-	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (ADDRINT)tree->root, tree->root->routine_sym->name);
-	
-	hcct_node_t* child;
-	for (child=tree->root->first_child; child!=NULL; child=child->next_sibling)
-		 printGraphvizAux(child, out);		
-	
-	fprintf(out, "}\n");
-}
-
-void printD3json(hcct_node_t* node, FILE* out) {
-	if (node==NULL) return;
-	
-	fprintf(out, "{\"name\": \"%s\"\n", node->routine_sym->name);
-	
-	hcct_node_t* tmp;
-	if (node->first_child!=NULL) {
-		fprintf(out, ", \"children\": [\n");
-		printD3json(node->first_child, out);
-		for (tmp=node->first_child->next_sibling; tmp!=NULL; tmp=tmp->next_sibling) {
-			fprintf(out, ", ");
-			printD3json(tmp, out);
-		}
-		fprintf(out, "]");
-	}
-	
-	fprintf(out, "}");
-}
-
 
 // process line from /proc maps file
 int parseMemoryMapLine(char* line, ADDRINT *start, ADDRINT *end, ADDRINT *offset, char** pathname) {
@@ -177,7 +96,7 @@ hcct_sym_t* getFunctionFromAddress(ADDRINT addr, hcct_tree_t* tree, hcct_map_t* 
 	char buf[BUFLEN+1], command[BUFLEN+1];
 	hcct_sym_t* sym=malloc(sizeof(hcct_sym_t));
 		
-	sprintf(command, "addr2line --e %s/%s -f -s -C %lx", tree->program_path, tree->short_name, addr);
+	sprintf(command, "addr2line --e %s/%s -f -C %lx", tree->program_path, tree->short_name, addr);
 	fp=popen(command, "r");
 	if (fp == NULL) {
 		printf("Error: unable to execute addr2line!");
@@ -211,7 +130,7 @@ hcct_sym_t* getFunctionFromAddress(ADDRINT addr, hcct_tree_t* tree, hcct_map_t* 
 			if (map->pathname[0]!='[' && strcmp(map->pathname, "<unknown>")) { // avoid [heap], [stack] ...				
 				ADDRINT offset= addr - map->start;								
 				
-				sprintf(command, "addr2line -e %s -f -s -C %lx 2> /dev/null", map->pathname, offset);
+				sprintf(command, "addr2line -e %s -f -C %lx 2> /dev/null", map->pathname, offset);
 				fp=popen(command, "r");			
 				if (fp == NULL) {
 					printf("Error: unable to execute addr2line!");
@@ -319,15 +238,122 @@ hcct_map_t* createMemoryMap(char* program) {
 	return first;    
 }
 
-void freeMemoryMap(hcct_map_t* map) {
-	hcct_map_t *m1, *m2;
+void solveSym(hcct_node_t* node, hcct_tree_t* tree) {
+	//if (node==NULL) return; // for safety	
+	// solve addresses
+    node->routine_sym=getFunctionFromAddress(node->routine_id, tree, tree->map);
+    node->call_site_sym=getFunctionFromAddress(node->call_site, tree, tree->map);
+}
+
+// remove from tree every node such that node->counter <= min_counter (Space Saving algorithm)
+void pruneTree(hcct_tree_t* tree, hcct_node_t* node, UINT32 min_counter) {
+	if (node==NULL) return;
 	
-	for (m1=map; m1!=NULL; ) {
-		m2=m1->next;		
-		free(m1->pathname);
-		free(m1);
-		m1=m2;
+	hcct_node_t *ptr, *tmp;
+		
+	for (ptr=node->first_child; ptr!=NULL; ) {
+		tmp=ptr->next_sibling;
+		pruneTree(tree, ptr, min_counter);
+		ptr=tmp;		
 	}
+			
+	if (node->counter <= min_counter && node->first_child == NULL && node->routine_id != 0) {
+		// detach node from the tree
+		if (node->parent->first_child==node) {
+			node->parent->first_child=node->next_sibling;
+		} else {
+			for (tmp=node->parent->first_child; tmp!=NULL; tmp=tmp->next_sibling) {
+				if (tmp->next_sibling==node) {
+					tmp->next_sibling=node->next_sibling;
+					break;					
+				}
+			}
+		}
+		tree->nodes--;
+		// symbols not solved yet
+		free(node);
+	} else {
+		// Solve symbols only for HCCT nodes!
+		if (node!=tree->root) solveSym(node, tree);
+	}
+}
+
+char* printFileName(char* full_name) {
+	char *a, *b;
+		
+	a=strtok(full_name, "/");
+	if (a==NULL) return full_name;
+	while (a!=NULL) {
+		b=a;
+		a=strtok(NULL, "/");
+	}
+	return b;
+}
+
+// print tree to screen
+void printTree(hcct_node_t* node, int level) {
+	if (node==NULL) return;
+	
+	hcct_node_t* tmp;
+	int i;
+	
+	printf("|=");	
+	for (i=0; i<level; ++i) printf("=");
+	
+	char *file, *image;
+	file=printFileName(node->routine_sym->file);
+	image=basename(node->routine_sym->image);
+	//file=basename(
+	//if (node->routine_sym->image[0]=='/')	
+		printf("> (%lu) %s in %s [%s]\n", node->counter, node->routine_sym->name, file, image);
+	//else
+//		printf("> (%lu) %s in %s [%s]\n", node->counter, node->routine_sym->name, node->routine_sym->file, node->routine_sym->image);
+	
+	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
+		printTree(tmp, level+1);	
+}
+
+void printGraphvizAux(hcct_node_t* node, FILE* out) {
+	if (node==NULL) return;
+	
+	hcct_node_t* tmp;
+	
+	fprintf(out, "\"%lx\" -> \"%lx\" [label=\"calls: %lu\"];\n", (ADDRINT)node->parent, (ADDRINT)node, node->counter);	
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (ADDRINT)node, node->routine_sym->name);
+		
+	for (tmp=node->first_child; tmp!=NULL; tmp=tmp->next_sibling)
+		printGraphvizAux(tmp, out);
+	
+}
+
+void printGraphviz(hcct_tree_t* tree, FILE* out) {
+	fprintf(out, "digraph HCCT{\n");
+	fprintf(out, "\"%lx\" [label=\"%s\"];\n", (ADDRINT)tree->root, tree->root->routine_sym->name);
+	
+	hcct_node_t* child;
+	for (child=tree->root->first_child; child!=NULL; child=child->next_sibling)
+		 printGraphvizAux(child, out);		
+	
+	fprintf(out, "}\n");
+}
+
+void printD3json(hcct_node_t* node, FILE* out) {
+	if (node==NULL) return;
+	
+	fprintf(out, "{\"name\": \"%s\"\n", node->routine_sym->name);
+	
+	hcct_node_t* tmp;
+	if (node->first_child!=NULL) {
+		fprintf(out, ", \"children\": [\n");
+		printD3json(node->first_child, out);
+		for (tmp=node->first_child->next_sibling; tmp!=NULL; tmp=tmp->next_sibling) {
+			fprintf(out, ", ");
+			printD3json(tmp, out);
+		}
+		fprintf(out, "]");
+	}
+	
+	fprintf(out, "}");
 }
 
 // create tree in memory
@@ -430,7 +456,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     printf(" %s %s (TID: %d)\n", tree->program_path, tree->short_name, tree->tid);
     
     // create map from .map file    
-    hcct_map_t* map=createMemoryMap(tree->short_name);	
+    tree->map=createMemoryMap(tree->short_name);	
 
     // I need a stack to reconstruct the tree
     hcct_pair_t tree_stack[STACK_MAX_DEPTH];
@@ -515,10 +541,6 @@ hcct_tree_t* createTree(FILE* logfile) {
         node->routine_id=strtoul(s, &s, 16);
         s++;
         node->call_site=strtoul(s, &s, 16);
-        
-        // solve addresses
-        node->routine_sym=getFunctionFromAddress(node->routine_id, tree, map);
-        node->call_site_sym=getFunctionFromAddress(node->call_site, tree, map);
                 
         // Attach node to the tree
         while (tree_stack[stack_idx].id!=parent_id && stack_idx>=0)
@@ -563,9 +585,7 @@ hcct_tree_t* createTree(FILE* logfile) {
     tree->root=root;
         
     printf("\nTree has been built.\n");
-    
-    freeMemoryMap(map);
-    
+       
     return tree;
 }
 

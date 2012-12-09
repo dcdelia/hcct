@@ -314,6 +314,11 @@ void hcct_exit()
 
 int hcct_init()
 {
+    #if SHOW_MESSAGES==1
+    pid_t tid=syscall(__NR_gettid);
+    printf("[hcct] initializing data structures for thread %d\n", tid);
+    #endif
+    
     // initialize custom memory allocator
     hcct_pool = 
         pool_init(PAGE_SIZE, sizeof(lss_hcct_node_t), &free_list);
@@ -450,10 +455,12 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out, lss
 
 void hcct_dump()
 {
+	pid_t tid;
+	
 	#if DUMP_TREE==1
 	unsigned long nodes=0;
 	FILE* out;
-	pid_t tid=syscall(__NR_gettid);	    
+	tid=syscall(__NR_gettid);	    
 	
     int ds;	    
     char dumpFileName[BUFLEN+1];	    
@@ -487,6 +494,11 @@ void hcct_dump()
 
 	#endif
 	
+	#if SHOW_MESSAGES==1
+    tid=syscall(__NR_gettid);
+    printf("[hcct] removing data structures for thread %d\n", tid);
+    #endif
+    
 	// Free memory used by custom allocator and by lazy priority queue
 	pool_cleanup(hcct_pool);
 	free(queue);
