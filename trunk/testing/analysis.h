@@ -41,11 +41,22 @@ struct hcct_pair_s {
     ADDRINT          id;
 };
 
+typedef struct hcct_map_s hcct_map_t;
+struct hcct_map_s {
+	ADDRINT		start;
+	ADDRINT		end;	
+	char*		pathname;
+	ADDRINT		offset; // offset into the file - TODO: useles??
+	hcct_map_t*	next;
+};
+
+
 typedef struct hcct_tree_s hcct_tree_t;
 struct hcct_tree_s {
     hcct_node_t*    root;
     char			*short_name;
     char			*program_path;
+    hcct_map_t*		map;
     pid_t			tid;
     unsigned short  tool;    
     UINT32          nodes;
@@ -55,15 +66,6 @@ struct hcct_tree_s {
     double          phi;
     UINT64			sampled_enter_events;
     UINT64			exhaustive_enter_events; 
-};
-
-typedef struct hcct_map_s hcct_map_t;
-struct hcct_map_s {
-	ADDRINT		start;
-	ADDRINT		end;	
-	char*		pathname;
-	ADDRINT		offset; // offset into the file - TODO
-	hcct_map_t*	next;
 };
 
 #endif
