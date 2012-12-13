@@ -13,7 +13,7 @@
 #define STACK_MAX_DEPTH		1024
 #define PAGE_SIZE			1024
 #define BUFLEN				512
-#define SHOW_MESSAGES		1
+#define SHOW_MESSAGES		0
 #define DUMP_TREE			1
 
 // LSS defaults

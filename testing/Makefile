@@ -4,11 +4,17 @@ CC  =		gcc $(CFLAGS)
 WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
-all:	exhaustive burst tracer tools install
+all:	exhaustive burst tracer tools pthread install
 
 burst:	libs-burst test-burst
 
 exhaustive:	libs test
+
+pthread: Makefile common.h cct_pthread.c
+		$(CC) -c cct_pthread.c
+		$(CC) -shared cct_pthread.c -o libhcct_cct_pthread.so $(WRAP)
+		@mv libhcct_cct_pthread.so libs/
+		@rm -f *.o
 
 time:	Makefile time.c common.h pool.c pool.h cct.c cct.h
 		$(CC) -c time.c -DPROFILER_CCT
@@ -53,14 +59,14 @@ libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h 
 		@mv *.so libs/
 		@rm -f *.o
 		
-test:	Makefile example.c		
+test:	Makefile example.c libs/
 		@mkdir -p test
 		$(CC) -o test/empty example.c -L./libs -lhcct_empty $(INSTR)
 		$(CC) -o test/cct example.c -L./libs -lhcct_cct $(INSTR)
 		$(CC) -o test/cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
 		$(CC) -o test/lss example.c -L./libs -lhcct_lss $(INSTR)
 		
-test-burst:	Makefile example.c
+test-burst:	Makefile example.c libs/
 		@mkdir -p test
 		$(CC) -o test/empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
 		$(CC) -o test/cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
@@ -87,7 +93,7 @@ install:
 		@echo "==========================================================="		
 		@echo
 		cp libs/* /usr/local/lib
-		cd /usr/local/lib && ln -f -s libhcct_cct_malloc.so libhcct.so		
+		cd /usr/local/lib && ln -f -s libhcct_cct_pthread.so libhcct.so		
 		@echo
 		@echo "====="
 		@echo "Done."
