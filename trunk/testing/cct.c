@@ -30,7 +30,7 @@ __thread UINT32      cct_nodes;
 // global parameters set by hcct_getenv()
 char*   dumpPath;
 
-#if BURSTING
+#if BURSTING==1
 extern unsigned long    sampling_interval;
 extern unsigned long    burst_length;
 extern unsigned short   burst_on;   // enable or disable bursting
@@ -40,6 +40,13 @@ extern __thread UINT64	exhaustive_enter_events;
 // legal values go from 0 to shadow_stack_idx-1
 extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
 extern __thread int                shadow_stack_idx; 
+#elif PROFILE_TIME==1
+extern UINT32						sampling_interval;
+extern __thread UINT64				thread_tics;
+
+// legal values go from 0 to shadow_stack_idx-1
+extern __thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH];
+extern __thread int					shadow_stack_idx; 
 #endif
 
 // get parameters from environment variables
@@ -59,12 +66,15 @@ cct_node_t* hcct_get_root()
 
 int hcct_init()
 {
-
     cct_stack_idx   = 0;
-    cct_nodes       = 1;
-    
-    #if USE_MALLOC    
-    cct_stack[0]=(cct_node_t*)malloc(sizeof(cct_node_t));
+    cct_nodes       = 1;   
+                       
+    #if USE_MALLOC==1        
+    cct_stack[0]=(cct_node_t*)malloc(sizeof(cct_node_t));    
+    if (cct_stack[0] == NULL) {
+			printf("[hcct] error while initializing cct root node... Quitting!\n");
+			return -1;	
+	}    		
     #else
     // initialize custom memory allocator
     cct_pool = pool_init(PAGE_SIZE, sizeof(cct_node_t), &cct_free_list);
@@ -150,20 +160,41 @@ void hcct_align() {
     aligned=1;
     #endif
 }
+#elif PROFILE_TIME==1
+void hcct_align(UINT32 increment) {
+	// reset CCT internal stack
+    cct_stack_idx=0;
+	
+	// walk the shadow stack
+	int i;
+    for (i=0; i<shadow_stack_idx-1; ++i)
+        hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site, 0);
+    hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site, increment);
+	
+}
 #endif
 
-
+#if PROFILE_TIME==0
 void hcct_enter(ADDRINT routine_id, ADDRINT call_site)
-{
-    cct_node_t *parent=cct_stack[cct_stack_idx++];
+#else
+void hcct_enter(ADDRINT routine_id, ADDRINT call_site, UINT32 increment)
+#endif
+{			
+	cct_node_t *parent=cct_stack[cct_stack_idx++]; 			
+	//~ if (parent==NULL) return;
     cct_node_t *node;
+    
     for (node=parent->first_child; node!=NULL; node=node->next_sibling)
         if (node->routine_id == routine_id &&
-            node->call_site == call_site) break;
+            node->call_site == call_site) break;   
 
     if (node!=NULL) {
         cct_stack[cct_stack_idx]=node;
+        #if PROFILE_TIME==0
         node->counter++;
+        #else
+        node->counter+=increment;
+        #endif
         return;
     }
 
@@ -174,9 +205,13 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site)
     pool_alloc(cct_pool, cct_free_list, node, cct_node_t);
     #endif
     cct_stack[cct_stack_idx] = node;
-    node->routine_id = routine_id;
+    node->routine_id = routine_id;    
     node->first_child = NULL;
+    #if PROFILE_TIME==0
     node->counter = 1;
+    #else
+    node->counter=increment;
+    #endif
     node->call_site =  call_site;
     node->next_sibling = parent->first_child;
     parent->first_child = node;
@@ -184,6 +219,7 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site)
 
 void hcct_exit()
 {
+    //cct_stack[cct_stack_idx--]=NULL; // HERE
     cct_stack_idx--;
 }
 
@@ -210,8 +246,7 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
 
 #if USE_MALLOC
 static void __attribute__((no_instrument_function)) free_cct(cct_node_t* node) {
-	// free(NULL) is ok
-   
+	// free(NULL) is ok :)   
    cct_node_t *ptr, *tmp;
     for (ptr=node->first_child; ptr!=NULL;) {
 		tmp=ptr->next_sibling;
@@ -241,19 +276,21 @@ void hcct_dump()
     if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
     out = fdopen(ds, "w");    
 	    	    
-	#if BURSTING
+	#if BURSTING==1
 	// c <tool> <sampling_interval> <burst_length> <exhaustive_enter_events>    
 	fprintf(out, "c cct-burst %lu %lu %llu\n", sampling_interval, burst_length, exhaustive_enter_events);	    
+	#elif PROFILE_TIME==1
+	// c <tool> <sampling_interval> <thread_tics>
+	fprintf(out, "c cct-time %lu %llu\n", sampling_interval, thread_tics);
 	#else
-    // c <tool>
+	// c <tool>
 	fprintf(out, "c cct \n"); // do not remove the white space between cct and \n :)	    	    
 	#endif
 	    
 	// c <command> <process/thread id> <working directory>
 	char* cwd=getcwd(NULL, 0);
 	fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);	    
-	free(cwd);
-	   
+	free(cwd);	   
 	
 	hcct_dump_aux(out, hcct_get_root(), &nodes, &cct_enter_events, NULL);
 	cct_enter_events--; // root node is a dummy node with counter 1
@@ -263,11 +300,21 @@ void hcct_dump()
 	fclose(out);
 	#endif
 	    	    	
-	#if USE_MALLOC==0
-	// Free memory used by custom allocator
-	pool_cleanup(cct_pool);
-	#else
+	#if USE_MALLOC==1
 	// Recursively free the CCT
-	free_cct(cct_root);
+	free_cct(cct_root);	
+	#else
+	// Free memory used by custom allocator
+	pool_cleanup(cct_pool);	
 	#endif
+	
+	// TODO
+	//~ cct_stack_idx=0;
+	//~ cct_stack[0]=NULL;
+	
+	
+	#if SHOW_MESSAGES==1
+	printf("[hcct] dump completed for thread %ld\n", syscall(__NR_gettid));
+	#endif
+	
 }
