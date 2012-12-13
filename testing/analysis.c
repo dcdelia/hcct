@@ -301,7 +301,8 @@ void printTree(hcct_node_t* node, int level) {
 	for (i=0; i<level; ++i) printf("=");
 	
 	char *file, *image;
-	file=printFileName(node->routine_sym->file);
+	//file=printFileName(node->routine_sym->file);
+	file=node->routine_sym->file;
 	image=basename(node->routine_sym->image);
 	//file=basename(
 	//if (node->routine_sym->image[0]=='/')	

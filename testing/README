@@ -21,6 +21,10 @@ with environment variables:
 CFLAGS="-finstrument-functions -g"
 LDFLAGS="-rdynamic -lhcct -lpthread -Wl,-wrap,pthread_create \
 		-Wl,-wrap,pthread_exit"
+		
+If you plan to use MMX/SSE instructions, in newer gcc versions you should
+add "-finstrument-functions-exclude-file-list=mmintrin.h,xmmintrin.h" to
+the CFLAGS environment variable.
 
 When a program foo is executed, several foo-<TID>.tree are created (one 
 per thread), plus an additional file foo.map mirroring /proc/self/maps.

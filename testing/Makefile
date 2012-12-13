@@ -1,27 +1,24 @@
 # Very simple makefile
-OPT_LEVEL =	-O3
-CC  =		gcc $(OPT_LEVEL)
+CFLAGS =	-O3 -g
+CC  =		gcc $(CFLAGS)
 WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
-all:	exhaustive burst tracer tools
-		@echo
-		@echo "==========================================================="
-		@echo "If the operations below fail, please do them again as root!"
-		@echo "==========================================================="		
-		@echo
-		cp libs/* /usr/local/lib
-		cd /usr/local/lib && ln -f -s libhcct_lss.so libhcct.so		
-		@echo
-		@echo "====="
-		@echo "Done."
-		@echo "====="		
+all:	exhaustive burst tracer tools install
 
 burst:	libs-burst test-burst
 
-exhaustive:	libs test		
+exhaustive:	libs test
 
-libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h		
+time:	Makefile time.c common.h pool.c pool.h cct.c cct.h
+		$(CC) -c time.c -DPROFILER_CCT
+		$(CC) -c cct.c -DPROFILE_TIME
+		$(CC) -c pool.c	
+		$(CC) -shared time.o cct.o pool.o -o libhcct_time.so -lrt $(WRAP)		
+		@mv libhcct_time.so libs/
+		@rm -f *.o
+		
+libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h frequency.c	
 		$(CC) -c cct.c
 		$(CC) -c cct.c -DUSE_MALLOC -o cct_malloc.o
 		$(CC) -c empty.c
@@ -33,7 +30,7 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c
 		@# cct profiler(s)
 		$(CC) -c frequency.c -DPROFILER_CCT
 		$(CC) -shared cct.o frequency.o pool.o -o libhcct_cct.so $(WRAP)
-		$(CC) -shared cct_malloc.o frequency.o pool.o -o libhcct_cct_malloc.so $(WRAP)
+		$(CC) -shared cct_malloc.o frequency.o -o libhcct_cct_malloc.so $(WRAP)
 		@# lss-hcct profiler
 		$(CC) -c frequency.c
 		$(CC) -shared lss-hcct.o frequency.o pool.o -o libhcct_lss.so $(WRAP)
@@ -41,7 +38,7 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c
 		@mv *.so libs/
 		@rm -f *.o		
 
-libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h		
+libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h frequency_bursting.c		
 		$(CC) -c pool.c
 		$(CC) -c empty.c -DBURSTING
 		$(CC) -c frequency_bursting.c -DPROFILER_EMPTY
@@ -58,16 +55,16 @@ libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h 
 		
 test:	Makefile example.c		
 		@mkdir -p test
-		$(CC) -g -o test/empty example.c -L./libs -lhcct_empty $(INSTR)
-		$(CC) -g -o test/cct example.c -L./libs -lhcct_cct $(INSTR)
-		$(CC) -g -o test/cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
-		$(CC) -g -o test/lss example.c -L./libs -lhcct_lss $(INSTR)
+		$(CC) -o test/empty example.c -L./libs -lhcct_empty $(INSTR)
+		$(CC) -o test/cct example.c -L./libs -lhcct_cct $(INSTR)
+		$(CC) -o test/cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
+		$(CC) -o test/lss example.c -L./libs -lhcct_lss $(INSTR)
 		
 test-burst:	Makefile example.c
 		@mkdir -p test
-		$(CC) -g -o test/empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
-		$(CC) -g -o test/cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
-		$(CC) -g -o test/lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
+		$(CC) -o test/empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
+		$(CC) -o test/cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
+		$(CC) -o test/lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
 		
 tracer: Makefile tracer.c tracer.h example.c
 		$(CC) -c tracer.c
@@ -82,5 +79,19 @@ tools:	Makefile analysis.c analysis.h common.h
 		@mkdir -p tools
 		$(CC) -o tools/analysis analysis.c -lm
 
+
+install:
+		@echo
+		@echo "==========================================================="
+		@echo "If the operations below fail, please do them again as root!"
+		@echo "==========================================================="		
+		@echo
+		cp libs/* /usr/local/lib
+		cd /usr/local/lib && ln -f -s libhcct_cct_malloc.so libhcct.so		
+		@echo
+		@echo "====="
+		@echo "Done."
+		@echo "====="		
+		
 clean:	
 		rm -rf libs tools test

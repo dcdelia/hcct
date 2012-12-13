@@ -77,7 +77,7 @@ void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 // Routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {		
-	hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
+		hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
 }
 
 // Routine exit
@@ -102,7 +102,7 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 
 // handles thread termination made without pthread_exit
 void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
-{                
+{                                
         hcct_init();
 
         // Retrieve original routine address and argument        
@@ -127,8 +127,13 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
 // wrap pthread_create
 int __attribute__((no_instrument_function)) __wrap_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *(*start_routine)(void*), void *arg)
 {
+        #if SHOW_MESSAGES==1
+        pid_t tid=syscall(__NR_gettid);
+        printf("[profiler] spawning a new thread from tid %d\n", tid);
+        #endif
+        
         void** params=malloc(2*sizeof(void*));
         params[0]=start_routine;
-        params[1]=arg;
+        params[1]=arg;        
         return __real_pthread_create(thread, attr, aux_pthread_create, params);
 }
