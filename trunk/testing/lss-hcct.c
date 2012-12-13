@@ -182,10 +182,10 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
 	++lss_enter_events;
 	
     lss_hcct_node_t *parent = stack[stack_idx];
-    lss_hcct_node_t *node;    
-
-    // check if calling context is already in the tree
-    for (node = parent->first_child; 
+    if (parent==NULL) return; // for instance, after trace_end() some events may still occur!
+    
+    lss_hcct_node_t *node;        
+    for (node = parent->first_child; // check if calling context is already in the tree
          node != NULL; 
          node = node->next_sibling)
         if (node->routine_id == routine_id &&
@@ -502,4 +502,8 @@ void hcct_dump()
 	// Free memory used by custom allocator and by lazy priority queue
 	pool_cleanup(hcct_pool);
 	free(queue);
+	
+	// for instance, after trace_end() some events may still occur!
+	stack_idx=0;
+	stack[0]=NULL;
 }

@@ -179,11 +179,11 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site)
 #else
 void hcct_enter(ADDRINT routine_id, ADDRINT call_site, UINT32 increment)
 #endif
-{			
-	cct_node_t *parent=cct_stack[cct_stack_idx++]; 			
-	//~ if (parent==NULL) return;
-    cct_node_t *node;
+{				
+	cct_node_t *parent=cct_stack[cct_stack_idx++]; 				
+	if (parent==NULL) return; // for instance, after trace_end() some events may still occur!
     
+    cct_node_t *node;    
     for (node=parent->first_child; node!=NULL; node=node->next_sibling)
         if (node->routine_id == routine_id &&
             node->call_site == call_site) break;   
@@ -219,7 +219,6 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site, UINT32 increment)
 
 void hcct_exit()
 {
-    //cct_stack[cct_stack_idx--]=NULL; // HERE
     cct_stack_idx--;
 }
 
@@ -238,7 +237,6 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
 	fprintf(out, "v %lx %lx %lu %lx %lx\n", (unsigned long)root, (unsigned long)(parent),
 	                                        root->counter, root->routine_id, root->call_site);
       
-        
 	for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
 		hcct_dump_aux(out, ptr, nodes, cct_enter_events, root);		
 }
@@ -308,11 +306,10 @@ void hcct_dump()
 	pool_cleanup(cct_pool);	
 	#endif
 	
-	// TODO
-	//~ cct_stack_idx=0;
-	//~ cct_stack[0]=NULL;
-	
-	
+	// for instance, after trace_end() some events may still occur!
+	cct_stack_idx=0;
+	cct_stack[0]=NULL;
+		
 	#if SHOW_MESSAGES==1
 	printf("[hcct] dump completed for thread %ld\n", syscall(__NR_gettid));
 	#endif
