@@ -4,7 +4,7 @@ CC  =		gcc $(CFLAGS)
 WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
-all:	exhaustive burst tracer tools pthread install
+all:	exhaustive burst tools time pthread install
 
 burst:	libs-burst test-burst
 
@@ -18,10 +18,14 @@ pthread: Makefile common.h cct_pthread.c
 
 time:	Makefile time.c common.h pool.c pool.h cct.c cct.h
 		$(CC) -c time.c -DPROFILER_CCT
-		$(CC) -c cct.c -DPROFILE_TIME
+		$(CC) -c cct.c -DPROFILE_TIME		
 		$(CC) -c pool.c	
-		$(CC) -shared time.o cct.o pool.o -o libhcct_time.so -lrt $(WRAP)		
-		@mv libhcct_time.so libs/
+		$(CC) -shared time.o cct.o pool.o -o libhcct_cct_time.so -lrt $(WRAP)		
+		@mv libhcct_cct_time.so libs/
+		$(CC) -c time.c
+		$(CC) -c lss-hcct.c -DPROFILE_TIME
+		$(CC) -shared time.o lss-hcct.o pool.o -o libhcct_lss_time.so -lrt $(WRAP)		
+		@mv libhcct_lss_time.so libs/
 		@rm -f *.o
 		
 libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h frequency.c	
@@ -73,20 +77,11 @@ test-burst:	Makefile example.c libs/
 		$(CC) -o test/empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
 		$(CC) -o test/cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
 		$(CC) -o test/lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
-		
-tracer: Makefile tracer.c tracer.h example.c
-		$(CC) -c tracer.c
-		$(CC) -shared tracer.o -o libhcct_tracer.so -lrt $(WRAP)
-		@mkdir -p libs
-		@mv *.so libs/
-		@rm -f *.o		
-		@mkdir -p test
-		$(CC) -o test/tracer example.c -L./libs -lhcct_tracer $(INSTR)
-		
+
+				
 tools:	Makefile analysis.c analysis.h common.h
 		@mkdir -p tools
 		$(CC) -o tools/analysis analysis.c -lm
-
 
 install:
 		@echo
@@ -95,7 +90,7 @@ install:
 		@echo "==========================================================="		
 		@echo
 		cp libs/* /usr/local/lib
-		cd /usr/local/lib && ln -f -s libhcct_lss.so libhcct.so		
+		cd /usr/local/lib && ln -f -s libhcct_lss_burst.so libhcct.so		
 		@echo
 		@echo "====="
 		@echo "Done."

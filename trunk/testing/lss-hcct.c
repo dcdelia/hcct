@@ -56,8 +56,14 @@ extern __thread UINT64	exhaustive_enter_events;
 // legal values go from 0 to shadow_stack_idx-1
 extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
 extern __thread int                shadow_stack_idx; 
-#endif
+#elif PROFILE_TIME==1
+extern UINT32						sampling_interval;
+extern __thread UINT64				thread_tics;
 
+// legal values go from 0 to shadow_stack_idx-1
+extern __thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH];
+extern __thread int					shadow_stack_idx; 
+#endif
 
 // get parameters from environment variables
 static void __attribute__((no_instrument_function)) hcct_getenv() {
@@ -83,10 +89,6 @@ static void __attribute__((no_instrument_function)) hcct_getenv() {
     dumpPath=getenv("DUMPPATH");
 	if (dumpPath == NULL || dumpPath[0]=='\0')
 	    dumpPath=NULL;    
-}
-
-lss_hcct_node_t* hcct_get_root() {
-    return hcct_root;
 }
 
 #if INLINE_UPD_MIN==0
@@ -179,8 +181,11 @@ static void __attribute__((no_instrument_function)) prune(lss_hcct_node_t* node)
     #endif
 }
 
+#if PROFILE_TIME==0
 void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
-		        	
+#else
+void hcct_enter(ADDRINT routine_id, ADDRINT call_site, UINT32 increment) {
+#endif
 	lss_hcct_node_t *parent=stack[stack_idx++];
 	if (parent==NULL) {				
 		#if SHOW_MESSAGES==1		
@@ -207,10 +212,18 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
 		// node was already in the tree
         stack[stack_idx] = node;
 
-        if (IsMonitored(node)) {
+		#if PROFILE_TIME==0
+        if (IsMonitored(node)) {			
             node->counter++;
             return; // nothing left to do
         }
+        #else
+        if (increment==0) return;
+        else if (IsMonitored(node)) {
+			node->counter+=increment;
+			return;
+		}
+        #endif
     } else {
 		// add new child to parent		
         #if USE_MALLOC==0
@@ -232,6 +245,13 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
         stack[stack_idx]  = node;
     }
 
+	#if PROFILE_TIME==1	
+	if (increment==0) { // added cold node along path to hot node yet to be added
+		node->counter=0;
+		UnsetMonitored(node);
+		return;
+	}
+	#endif
     // Mark node as monitored
     SetMonitored(node);
 
@@ -240,7 +260,11 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
         #if KEEP_EPS
         node->eps = 0;
         #endif
+        #if PROFILE_TIME==0
         node->counter = 1;
+        #else
+        node->counter = increment;
+        #endif
         queue[num_queue_items++] = node;
         queue_full = num_queue_items == epsilon;
         return;
@@ -314,7 +338,11 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
     node->eps=min;
     #endif
 
+	#if PROFILE_TIME==0
     node->counter = min + 1;
+    #else
+    node->counter = min + increment;
+    #endif
 
     UnsetMonitored(queue[min_idx]);
 
@@ -333,6 +361,10 @@ void hcct_init()
 {
 	// hcct_init might have been invoked already once before trace_begin() is executed
 	if (hcct_root!=NULL) return;
+   
+	#if BURSTING==1
+    if (sampling_interval==0) init_bursting();
+    #endif
    
 	if (epsilon==0) hcct_getenv(); // will be executed only once
    
@@ -468,6 +500,18 @@ void hcct_align() {
     aligned=1;
     #endif
 }
+#elif PROFILE_TIME==1
+void hcct_align(UINT32 increment) {
+	// reset HCCT internal stack
+    stack_idx=0;
+	
+	// walk the shadow stack
+	int i;
+    for (i=0; i<shadow_stack_idx-1; ++i)
+        hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site, 0);
+    hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site, increment);
+	
+}
 #endif
 
 #if DUMP_TREE==1
@@ -513,9 +557,12 @@ void hcct_dump()
     if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
     out = fdopen(ds, "w");    	    
 	    	    	    
-    #if BURSTING
+    #if BURSTING==1
 	// c <tool> <epsilon> <sampling_interval> <burst_length> <exhaustive_enter_events>
-	fprintf(out, "c lss-hcct-burst %f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, exhaustive_enter_events);	    	    
+	fprintf(out, "c lss-hcct-burst %f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, exhaustive_enter_events);
+	#elif PROFILE_TIME==1
+	// c <tool> <epsilon> <sampling_interval> <thread_tics>
+	fprintf(out, "c lss-hcct-time %f %lu %llu\n", epsilon_d, sampling_interval, thread_tics);
 	#else
 	// c <tool> <epsilon>
 	fprintf(out, "c lss-hcct %f\n", epsilon_d);	    	    
@@ -526,7 +573,7 @@ void hcct_dump()
 	fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);
 	free(cwd);
 	    	
-	hcct_dump_aux(out, hcct_get_root(), &nodes);
+	hcct_dump_aux(out, hcct_root, &nodes);
 	
     // p <nodes> <enter_events>
     fprintf(out, "p %lu %llu\n", nodes, lss_enter_events); // #nodes used for a sanity check in the analysis tool
