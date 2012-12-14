@@ -135,10 +135,10 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 		exhaustive_enter_events=0;
         
         // Initializing hcct module        
-        //~ if (hcct_init()==-1) {
-            //~ printf("[profiler] error during initialization - exiting...\n");
-            //~ exit(1);   
-        //~ }
+        if (hcct_init()==-1) {
+            printf("[profiler] error during initialization - exiting...\n");
+            exit(1);   
+        }
         
 }
 
@@ -159,11 +159,11 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
         
         #if DUMP_TREE==1
 			#ifndef PROFILER_EMPTY
-			//~ hcct_dump_map();
+			hcct_dump_map();
 			#endif
 		#endif
         
-        //~ hcct_dump();
+        hcct_dump();
 }
 
 // Routine enter
@@ -178,8 +178,8 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this
 	
 	if (burst_on==0) aligned=0;
 	else {
-        //~ if (aligned==0) hcct_align();
-        //~ else hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
+        if (aligned==0) hcct_align();
+        else hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
     }
 }
 
@@ -198,7 +198,7 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
     if (burst_on==0) aligned=0;
 	else {
         // Aligning is not needed (no info provided for tree update)
-        //~ if (aligned==1) hcct_exit();
+        if (aligned==1) hcct_exit();
     }                                        
 }
 
@@ -211,7 +211,7 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 		#endif
 		
 		// Exit stuff
-		//~ hcct_dump();
+		hcct_dump();
         
         __real_pthread_exit(value_ptr);
 }

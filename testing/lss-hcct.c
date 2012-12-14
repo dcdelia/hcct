@@ -185,7 +185,7 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
     if (parent==NULL) return; // for instance, after trace_end() some events may still occur!
     
     lss_hcct_node_t *node;        
-    for (node = parent->first_child; // check if calling context is already in the tree
+    for (node = parent->first_child; // check if calling context is already in the tree // SEGFAULT HERE
          node != NULL; 
          node = node->next_sibling)
         if (node->routine_id == routine_id &&
