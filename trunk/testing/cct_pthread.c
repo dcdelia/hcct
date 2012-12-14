@@ -14,6 +14,7 @@ extern char *program_invocation_name;
 extern char *program_invocation_short_name;
 
 pthread_key_t	tlsKey = 17;
+int	tlsKey_active = 0;
 
 typedef struct cct_node_s cct_node_t;
 struct cct_node_s {
@@ -36,6 +37,10 @@ struct cct_tls_s {
 cct_tls_t* __attribute__((no_instrument_function)) hcct_init()
 {
 	cct_tls_t* tls=malloc(sizeof(cct_tls_t));
+	if (tls==NULL) {
+		printf("[hcct] error while initializing thread local storage... Quitting!\n");
+		exit(1);
+	}
 	
     tls->cct_stack_idx   = 0;
     tls->cct_nodes       = 1;   
@@ -94,6 +99,21 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
       
 	for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
 		hcct_dump_aux(out, ptr, nodes, cct_enter_events, root);		
+}
+#endif
+
+#if DUMP_TREE==1
+void __attribute__ ((no_instrument_function)) hcct_dump_map() {
+	
+	pid_t pid=syscall(__NR_getpid);
+		
+	// Command to be executed: "cp /proc/<PID>/maps <name>.map\0" => 9+10+6+variable+5 bytes needed
+	char command[BUFLEN+1];
+	sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
+	
+	int ret=system(command);
+	if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");	
+
 }
 #endif
 
@@ -163,11 +183,15 @@ void __attribute__((no_instrument_function)) hcct_enter(ADDRINT routine_id, ADDR
 		#if SHOW_MESSAGES==1
 		printf("[hcct] TLS non initialized yet for thread %ld\n", syscall(__NR_gettid));
 		#endif
+		if (tlsKey_active==0 && pthread_key_create(&tlsKey, tlsDestructor)) {
+			printf("[profiler] error while creating key for TLS - exiting...\n");
+            exit(1);   
+		} else tlsKey_active=1;
 		pthread_setspecific(tlsKey, hcct_init());
 		tls=(cct_tls_t*)pthread_getspecific(tlsKey);
 		if (tls==NULL) {
-			printf("[hcct] unable to create TLS... Quitting\n");
-			exit(1);
+			printf("[hcct] WARNING: unable to create TLS... skipping this rtn_enter event\n");
+			return;
 		}
 	} // else: TLS already initialized 
 		
@@ -185,7 +209,11 @@ void __attribute__((no_instrument_function)) hcct_enter(ADDRINT routine_id, ADDR
     }
 
     tls->cct_nodes++;    
-    node=(cct_node_t*)malloc(sizeof(cct_node_t)); // TODO
+    node=(cct_node_t*)malloc(sizeof(cct_node_t)); // TODO check ritorno malloc??
+    if (node==NULL) {
+		printf("[hcct] error while allocating new CCT node... Quitting!\n");
+		exit(1);
+	}
     
     tls->cct_stack[tls->cct_stack_idx] = node;
     node->routine_id = routine_id;    
@@ -202,11 +230,11 @@ void __attribute__((no_instrument_function)) hcct_exit()
     cct_tls_t* tls=(cct_tls_t*)pthread_getspecific(tlsKey);
 	if (tls==NULL) {
 		printf("[hcct] WARNING: tree created after an exit event!\n");
-		pthread_setspecific(tlsKey, hcct_init);
+		pthread_setspecific(tlsKey, hcct_init());
 		tls=(cct_tls_t*)pthread_getspecific(tlsKey);
 		if (tls==NULL) {			
-			printf("[hcct] unable to create TLS... Quitting\n");
-			exit(1);
+			printf("[hcct] WARNING: unable to create TLS... skipping this rtn_exit event\n");
+			return;
 		}
 	} else {
 		tls->cct_stack_idx--;
@@ -222,10 +250,10 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         printf("[profiler] program start - tid %d\n", tid);
         #endif
         
-        if (pthread_key_create(&tlsKey, tlsDestructor)) {
+        if (tlsKey_active==0 && pthread_key_create(&tlsKey, tlsDestructor)) {
 			printf("[profiler] error while creating key for TLS - exiting...\n");
             exit(1);   
-		}
+		} else tlsKey_active=1;
 }
 
 // execute after termination
@@ -242,6 +270,9 @@ void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
         printf("[profiler] program exit - tid %d\n", tid);
         #endif
         
+        #if DUMP_TREE==1
+		hcct_dump_map();
+		#endif
 }
 
 // Routine enter
@@ -296,6 +327,10 @@ int __attribute__((no_instrument_function)) __wrap_pthread_create(pthread_t *thr
         #endif
         
         void** params=malloc(2*sizeof(void*));
+        if (params==NULL) {
+			printf("[profiler] error while spawning new thread from tid %ld\n", syscall(__NR_gettid));
+			exit(1);
+		}
         params[0]=start_routine;
         params[1]=arg;        
         return __real_pthread_create(thread, attr, aux_pthread_create, params);
