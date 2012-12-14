@@ -46,15 +46,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         printf("[profiler] program start - tid %d\n", tid);
         #endif
         
-        if (hcct_getenv()!=0) {
-            printf("[profiler] error getting parameters - exiting...\n");
-            exit(1);   
-        }
-                
-        if (hcct_init()==-1) {
-            printf("[profiler] error during initialization - exiting...\n");
-            exit(1);   
-        }
+        hcct_init(); // we really need that?!?
 }
 
 // execute after termination

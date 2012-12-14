@@ -84,6 +84,8 @@ void __attribute__((no_instrument_function)) timerThread(void* arg)
 // execute before main
 void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 {
+		// TODO: spostare tutto in un metodo a parte che permetta a hcct_init di lanciare timer thread
+		
         #if SHOW_MESSAGES==1
         pid_t tid=syscall(__NR_gettid);
         printf("[profiler] program start - tid %d\n", tid);
@@ -120,13 +122,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
             printf("[profiler] error creating timer thread - exiting!\n");
             exit(1);
         }        
-        
-        // Initializing analysis algorithm parameters
-        if (hcct_getenv()!=0) {
-            printf("[profiler] error getting parameters - exiting...\n");
-            exit(1);   
-        }
-        
+                
         // Initialize shadow stack
         shadow_stack_idx=0;
         aligned=1;
@@ -135,10 +131,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 		exhaustive_enter_events=0;
         
         // Initializing hcct module        
-        if (hcct_init()==-1) {
-            printf("[profiler] error during initialization - exiting...\n");
-            exit(1);   
-        }
+        hcct_init();
         
 }
 

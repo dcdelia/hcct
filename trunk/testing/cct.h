@@ -19,8 +19,7 @@ struct cct_node_s {
     cct_node_t* next_sibling;    
 };
 
-int hcct_getenv() __attribute__((no_instrument_function));
-int hcct_init() __attribute__((no_instrument_function));
+void hcct_init() __attribute__((no_instrument_function));
 #if PROFILE_TIME==0
 void hcct_enter(ADDRINT routine_id, ADDRINT call_site) __attribute__((no_instrument_function));
 #else
