@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h> // getcwd
 #include <string.h>
+#include <pthread.h>
 
 #include "common.h"
 

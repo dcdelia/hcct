@@ -80,18 +80,9 @@ void __attribute__((no_instrument_function)) timerThread(void* arg)
         }
     }
 }
- 
-// execute before main
-void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
+
+void __attribute__ ((no_instrument_function)) init_bursting()
 {
-		// TODO: spostare tutto in un metodo a parte che permetta a hcct_init di lanciare timer thread
-		
-        #if SHOW_MESSAGES==1
-        pid_t tid=syscall(__NR_gettid);
-        printf("[profiler] program start - tid %d\n", tid);
-        #endif              
-        
-        // Initializing timer thread parameters (granularity: nanoseconds)
         burst_on=1;
         
         char* value;
@@ -115,12 +106,6 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
                 burst_length=BURST_LENGTH;
                 printf("[profiler] WARNING: invalid value specified for BLENGTH, using default (%lu) instead\n", burst_length);
             }
-        }
-
-        // conviene passare burston come parametro?
-        if (__real_pthread_create(&timerThreadID, NULL, timerThread, NULL)) {
-            printf("[profiler] error creating timer thread - exiting!\n");
-            exit(1);
         }        
                 
         // Initialize shadow stack
@@ -128,9 +113,24 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         aligned=1;
         
         // Total number of rtn enter events
-		exhaustive_enter_events=0;
-        
-        // Initializing hcct module        
+		exhaustive_enter_events=0;	
+		
+		// conviene passare burston come parametro?
+		if (__real_pthread_create(&timerThreadID, NULL, timerThread, NULL)) {
+            printf("[profiler] error creating timer thread - exiting!\n");
+            exit(1);
+        }
+}
+ 
+// execute before main
+void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
+{
+		
+        #if SHOW_MESSAGES==1
+        pid_t tid=syscall(__NR_gettid);
+        printf("[profiler] program start - tid %d\n", tid);
+        #endif              
+                        
         hcct_init();
         
 }
@@ -163,14 +163,14 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
 	++exhaustive_enter_events;
-		
-	
+			
 	// Shadow stack
 	shadow_stack[shadow_stack_idx].routine_id=(unsigned long)this_fn;
 	shadow_stack[shadow_stack_idx++].call_site=(unsigned long)call_site;
 	
 	if (burst_on==0) aligned=0;
 	else {
+		if (sampling_interval==0) hcct_init();
         if (aligned==0) hcct_align();
         else hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
     }
@@ -181,12 +181,6 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
 {	
     // Shadow stack
     --shadow_stack_idx;
-    
-    //~ // Never happened during tests :)
-    //~ if (--shadow_stack_idx<0) {
-    //~ printf("FATAL ERROR: stack index < 0\n");
-    //~ exit(1);
-    //~ }        
                 
     if (burst_on==0) aligned=0;
 	else {

@@ -29,6 +29,7 @@ __thread UINT32      cct_nodes;
 
 // global parameters set by hcct_getenv()
 char*   dumpPath;
+UINT16	getenv_done;	// flag
 
 #if BURSTING==1
 extern unsigned long    sampling_interval;
@@ -53,12 +54,9 @@ extern __thread int					shadow_stack_idx;
 static void __attribute__((no_instrument_function)) hcct_getenv() {
 	dumpPath=getenv("DUMPPATH");
 	if (dumpPath == NULL || dumpPath[0]=='\0')
-	    dumpPath=NULL;	
-}
-
-cct_node_t* hcct_get_root()
-{
-    return cct_root;
+	    dumpPath=NULL;
+	
+	getenv_done=1;
 }
 
 void hcct_init()
@@ -66,7 +64,11 @@ void hcct_init()
 	// hcct_init might have been invoked already once before trace_begin() is executed
     if (cct_root!=NULL) return;
     
-    hcct_getenv(); // TODO
+    #if BURSTING==1
+    if (sampling_interval==0) init_bursting();
+    #endif
+    
+    if (getenv_done==0) hcct_getenv(); // will be executed only once
     
     cct_stack_idx   = 0;
     cct_nodes       = 1;
@@ -314,7 +316,7 @@ void hcct_dump()
 	fprintf(out, "c %s %d %s\n", program_invocation_name, tid, cwd);	    
 	free(cwd);	   
 	
-	hcct_dump_aux(out, hcct_get_root(), &nodes, &cct_enter_events, NULL);
+	hcct_dump_aux(out, cct_root, &nodes, &cct_enter_events, NULL);
 	cct_enter_events--; // root node is a dummy node with counter 1
 		
 	// p <nodes> <enter_events>

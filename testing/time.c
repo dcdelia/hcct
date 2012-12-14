@@ -14,6 +14,10 @@ extern char *program_invocation_short_name;
 
 #define PROFILE_TIME	1
 #define TIMER_TYPE		CLOCK_REALTIME
+//~ #define TIMER_TYPE		CLOCK_MONOTONIC
+//~ #define TIMER_TYPE		CLOCK_PROCESS_CPUTIME_ID // probably makes sense only for CPU-intensive applications
+
+#define TIMER_FLAGS		0
 #include "common.h"
 
 // timer globals
@@ -35,9 +39,8 @@ __thread int                shadow_stack_idx; // TODO
 //~ #else
 //~ #ifdef PROFILER_EMPTY
 //~ #include "empty.h"
-//~ #else
-//~ #include "lss-hcct.h"
-//~ #endif
+#else
+#include "lss-hcct.h"
 #endif
 
 #if DUMP_TREE==1
@@ -67,10 +70,7 @@ void __attribute__((no_instrument_function)) timerThread(void* arg)
 	
     while(1) {
 		global_tics++;
-		clock_nanosleep(TIMER_TYPE, 0, &global_timer, NULL);
-		#if SHOW_MESSAGES==1
-		//~ printf("[profiler] timer tic\n");
-		#endif
+		clock_nanosleep(TIMER_TYPE, TIMER_FLAGS, &global_timer, NULL);
 	}
 }
  
@@ -101,12 +101,6 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
                 printf("[profiler] WARNING: invalid value specified for SINTVL, using default (%lu) instead\n", sampling_interval);
             }
         }
-
-        // Initializing analysis algorithm parameters
-        if (hcct_getenv()!=0) {
-            printf("[profiler] error getting parameters - exiting...\n");
-            exit(1);   
-        }
                 
 		// Start timer thread       
         if (__real_pthread_create(&timerThreadID, NULL, timerThread, NULL)) {
@@ -115,11 +109,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         }        
         
         // Initializing hcct module        
-        if (hcct_init()==-1) {
-            printf("[profiler] error during initialization - exiting...\n");
-            exit(1);   
-        }
-        
+        hcct_init();
 }
 
 // execute after termination
@@ -155,7 +145,8 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this
 	
 	if (global_tics>thread_tics) {
 		UINT32 increment = global_tics - thread_tics;
-		thread_tics=global_tics;
+		//thread_tics=global_tics;
+		thread_tics+=increment;
 		#if SHOW_MESSAGES==1
 		//~ printf("[hcct] perform aligning\n");
 		#endif		
