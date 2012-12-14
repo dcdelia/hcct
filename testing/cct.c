@@ -50,13 +50,10 @@ extern __thread int					shadow_stack_idx;
 #endif
 
 // get parameters from environment variables
-int hcct_getenv()
-{
+static void __attribute__((no_instrument_function)) hcct_getenv() {
 	dumpPath=getenv("DUMPPATH");
 	if (dumpPath == NULL || dumpPath[0]=='\0')
-	    dumpPath=NULL;
-	    
-    return 0;
+	    dumpPath=NULL;	
 }
 
 cct_node_t* hcct_get_root()
@@ -64,29 +61,39 @@ cct_node_t* hcct_get_root()
     return cct_root;
 }
 
-int hcct_init()
+void hcct_init()
 {
+	// hcct_init might have been invoked already once before trace_begin() is executed
+    if (cct_root!=NULL) return;
+    
+    hcct_getenv(); // TODO
+    
     cct_stack_idx   = 0;
-    cct_nodes       = 1;   
-                       
+    cct_nodes       = 1;
+    
+    #if SHOW_MESSAGES==1
+    pid_t tid=syscall(__NR_gettid);
+    printf("[cct] initializing data structures for thread %d\n", tid);
+    #endif
+                          
     #if USE_MALLOC==1        
     cct_stack[0]=(cct_node_t*)malloc(sizeof(cct_node_t));    
     if (cct_stack[0] == NULL) {
-			printf("[hcct] error while initializing cct root node... Quitting!\n");
-			return -1;	
+			printf("[cct] error while initializing cct root node... Quitting!\n");
+			exit(1);
 	}    		
     #else
-    // initialize custom memory allocator
+    // initialize custom memory allocator    
     cct_pool = pool_init(PAGE_SIZE, sizeof(cct_node_t), &cct_free_list);
     if (cct_pool == NULL) {
-			printf("[hcct] error while initializing allocator... Quitting!\n");
-			return -1;
+			printf("[cct] error while initializing allocator... Quitting!\n");
+			exit(1);
 	}
 
     pool_alloc(cct_pool, cct_free_list, cct_stack[0], cct_node_t);
     if (cct_stack[0] == NULL) {
-			printf("[hcct] error while initializing cct root node... Quitting!\n");
-			return -1;
+			printf("[cct] error while initializing cct root node... Quitting!\n");
+			exit(1);
 	}
 	#endif
 
@@ -96,8 +103,6 @@ int hcct_init()
     cct_stack[0]->call_site = 0;
     cct_stack[0]->counter = 1;
     cct_root = cct_stack[0];
-
-    return 0;
 }
 
 #if BURSTING==1
@@ -181,8 +186,20 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site, UINT32 increment)
 #endif
 {				
 	cct_node_t *parent=cct_stack[cct_stack_idx++]; 				
-	if (parent==NULL) return; // for instance, after trace_end() some events may still occur!
-    
+	if (parent==NULL) { // for instance, after trace_end() some events may still occur!		
+		#if SHOW_MESSAGES==1		
+		printf("[cct] rtn_enter event while CCT not initialized yet for thread %ld\n", syscall(__NR_gettid));
+		#endif
+		
+		hcct_init();		
+
+		parent=cct_stack[cct_stack_idx];
+		if (parent==NULL) {
+			printf("[hcct] unable to initialize HCCT... Quitting!\n");
+			exit(1);
+		}
+	}
+	
     cct_node_t *node;    
     for (node=parent->first_child; node!=NULL; node=node->next_sibling)
         if (node->routine_id == routine_id &&
@@ -199,20 +216,20 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site, UINT32 increment)
     }
 
     ++cct_nodes;
-    #if USE_MALLOC
+    #if USE_MALLOC==1
     node=(cct_node_t*)malloc(sizeof(cct_node_t));
-    #else
+    #else    
     pool_alloc(cct_pool, cct_free_list, node, cct_node_t);
     #endif
     cct_stack[cct_stack_idx] = node;
     node->routine_id = routine_id;    
-    node->first_child = NULL;
+    node->call_site =  call_site;    
     #if PROFILE_TIME==0
     node->counter = 1;
     #else
     node->counter=increment;
     #endif
-    node->call_site =  call_site;
+    node->first_child = NULL;
     node->next_sibling = parent->first_child;
     parent->first_child = node;
 }
@@ -242,7 +259,7 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
 }
 #endif
 
-#if USE_MALLOC
+#if USE_MALLOC==1
 static void __attribute__((no_instrument_function)) free_cct(cct_node_t* node) {
 	// free(NULL) is ok :)   
    cct_node_t *ptr, *tmp;
@@ -257,11 +274,18 @@ static void __attribute__((no_instrument_function)) free_cct(cct_node_t* node) {
 
 void hcct_dump()
 {
+	pid_t tid;
+	
+	#if SHOW_MESSAGES==1
+    tid=syscall(__NR_gettid);
+    printf("[cct] removing data structures for thread %d\n", tid);
+    #endif
+	
 	#if DUMP_TREE==1
 	unsigned long nodes=0;
 	UINT64 cct_enter_events=0;
 	FILE* out;
-	pid_t tid=syscall(__NR_gettid);	    
+	tid=syscall(__NR_gettid);	    
 	
     int ds;	    
 	char dumpFileName[BUFLEN+1];	    
@@ -271,7 +295,7 @@ void hcct_dump()
 	    sprintf(dumpFileName, "%s/%s-%d.tree", dumpPath, program_invocation_short_name, tid);
     }
     ds = open(dumpFileName, O_EXCL|O_CREAT|O_WRONLY, 0660);
-    if (ds == -1) exit((printf("[hcct] ERROR: cannot create output file %s\n", dumpFileName), 1));
+    if (ds == -1) exit((printf("[cct] ERROR: cannot create output file %s\n", dumpFileName), 1));
     out = fdopen(ds, "w");    
 	    	    
 	#if BURSTING==1
@@ -306,12 +330,12 @@ void hcct_dump()
 	pool_cleanup(cct_pool);	
 	#endif
 	
-	// for instance, after trace_end() some events may still occur!
-	cct_stack_idx=0;
-	cct_stack[0]=NULL;
+	// for instance, after trace_end() some events may still occur!	
+	cct_root=NULL; // see first instruction in hcct_init()
+	cct_stack_idx=0; cct_stack[0]=NULL; // see if parent==NULL in hcct_enter()
 		
 	#if SHOW_MESSAGES==1
-	printf("[hcct] dump completed for thread %ld\n", syscall(__NR_gettid));
+	printf("[cct] dump completed for thread %ld\n", syscall(__NR_gettid));
 	#endif
 	
 }

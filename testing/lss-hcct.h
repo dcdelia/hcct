@@ -17,8 +17,7 @@ struct lss_hcct_node_s {
     #endif
 };
 
-int hcct_getenv() __attribute__((no_instrument_function));
-int hcct_init() __attribute__((no_instrument_function));
+void hcct_init() __attribute__((no_instrument_function));
 void hcct_enter(ADDRINT routine_id, ADDRINT call_site) __attribute__((no_instrument_function));
 void hcct_exit() __attribute__((no_instrument_function));
 void hcct_dump() __attribute__((no_instrument_function));

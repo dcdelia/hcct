@@ -37,8 +37,10 @@ char*   dumpPath;
 __thread unsigned			stack_idx;
 __thread lss_hcct_node_t	*stack[STACK_MAX_DEPTH];
 __thread lss_hcct_node_t	*hcct_root;
+#if USE_MALLOC==0
 __thread pool_t				*hcct_pool;
 __thread void				*free_list;
+#endif
 __thread UINT32				min, min_idx, num_queue_items, second_min_idx;
 __thread lss_hcct_node_t	**queue;
 __thread int				queue_full;
@@ -58,9 +60,8 @@ extern __thread int                shadow_stack_idx;
 
 
 // get parameters from environment variables
-int hcct_getenv() {
-	char *value;
-	
+static void __attribute__((no_instrument_function)) hcct_getenv() {
+	char *value;	
 	double d;
     
 	value=getenv("EPSILON");
@@ -81,9 +82,7 @@ int hcct_getenv() {
         
     dumpPath=getenv("DUMPPATH");
 	if (dumpPath == NULL || dumpPath[0]=='\0')
-	    dumpPath=NULL;
-    
-    return 0;
+	    dumpPath=NULL;    
 }
 
 lss_hcct_node_t* hcct_get_root() {
@@ -173,46 +172,64 @@ static void __attribute__((no_instrument_function)) prune(lss_hcct_node_t* node)
                 c->next_sibling=node->next_sibling;
                 break;
             }
-
+	#if USE_MALLOC==0
     pool_free(node, free_list);
+    #else
+    free(node);
+    #endif
 }
 
 void hcct_enter(ADDRINT routine_id, ADDRINT call_site) {
-
+		        	
+	lss_hcct_node_t *parent=stack[stack_idx++];
+	if (parent==NULL) {				
+		#if SHOW_MESSAGES==1		
+		printf("[hcct] rtn_enter event while HCCT not initialized yet for thread %ld\n", syscall(__NR_gettid));
+		#endif
+		
+		hcct_init();		
+		
+		parent=stack[stack_idx];
+		if (parent==NULL) {
+			printf("[hcct] unable to initialize HCCT... Quitting!\n");
+			exit(1);
+		}
+	}
+			
 	++lss_enter_events;
-	
-    lss_hcct_node_t *parent = stack[stack_idx];
-    if (parent==NULL) return; // for instance, after trace_end() some events may still occur!
     
     lss_hcct_node_t *node;        
-    for (node = parent->first_child; // check if calling context is already in the tree // SEGFAULT HERE
-         node != NULL; 
-         node = node->next_sibling)
+    for (node = parent->first_child; node != NULL; node = node->next_sibling)
         if (node->routine_id == routine_id &&
             node->call_site == call_site) break;
     
-    // node was already in the tree
     if (node != NULL) {
-
-        stack[++stack_idx] = node;
+		// node was already in the tree
+        stack[stack_idx] = node;
 
         if (IsMonitored(node)) {
             node->counter++;
-            return;
+            return; // nothing left to do
         }
-    } 
-
-    // add new child to parent
-    else {
-        pool_alloc(hcct_pool, free_list, 
-                   node, lss_hcct_node_t);
+    } else {
+		// add new child to parent		
+        #if USE_MALLOC==0
+        pool_alloc(hcct_pool, free_list, node, lss_hcct_node_t);
+        #else
+        node=(lss_hcct_node_t*)malloc(sizeof(lss_hcct_node_t));
+        #endif
+        if (node==NULL) {
+			printf("[hcct] unable to allocate new node... Quitting!\n");
+			exit(1);
+		}
+                
         node->routine_id    = routine_id;
         node->call_site     = call_site;
         node->first_child   = NULL;
         node->next_sibling  = parent->first_child;
         node->parent        = parent;
         parent->first_child = node;
-        stack[++stack_idx]  = node;
+        stack[stack_idx]  = node;
     }
 
     // Mark node as monitored
@@ -312,56 +329,76 @@ void hcct_exit()
     stack_idx--;
 }
 
-int hcct_init()
+void hcct_init() 
 {
+	// hcct_init might have been invoked already once before trace_begin() is executed
+	if (hcct_root!=NULL) return;
+   
+	if (epsilon==0) hcct_getenv(); // will be executed only once
+   
+    stack_idx = 0;
+    
     #if SHOW_MESSAGES==1
     pid_t tid=syscall(__NR_gettid);
     printf("[hcct] initializing data structures for thread %d\n", tid);
     #endif
     
+    #if USE_MALLOC==0
     // initialize custom memory allocator
-    hcct_pool = 
-        pool_init(PAGE_SIZE, sizeof(lss_hcct_node_t), &free_list);
+    hcct_pool = pool_init(PAGE_SIZE, sizeof(lss_hcct_node_t), &free_list);
     if (hcct_pool == NULL) {
 			printf("[hcct] error while initializing allocator... Quitting!\n");
-            return -1;
+            exit(1);
 	}
+	#endif
     
     // create dummy root node
-    pool_alloc(hcct_pool, free_list, hcct_root, lss_hcct_node_t);
-    if (hcct_root == NULL) {
+    #if USE_MALLOC==0    
+	pool_alloc(hcct_pool, free_list, stack[0], lss_hcct_node_t);
+	#else
+	stack[0]=(lss_hcct_node_t*)malloc(sizeof(lss_hcct_node_t));
+	#endif
+    if (stack[0] == NULL) {
 			printf("[hcct] error while initializing hcct root node... Quitting!\n");
-			return -1;
+			exit(1);
 	}
     
-    hcct_root->first_child  = NULL;
-    hcct_root->next_sibling = NULL;
-    hcct_root->counter      = 1;
-    hcct_root->routine_id   = 0;
-    hcct_root->call_site	= 0;
-    hcct_root->parent       = NULL;
+    // initialize root node        
+	stack[0]->first_child 	= NULL;
+    stack[0]->next_sibling	= NULL;    
+    stack[0]->routine_id	= 0;
+    stack[0]->call_site		= 0;
+    stack[0]->counter		= 1;
+    stack[0]->parent		= NULL;
+    
+    hcct_root=stack[0];
     SetMonitored(hcct_root);
-
-    // initialize stack
-    stack[0]  = hcct_root;
-    stack_idx = 0;
-
+    
     // create lazy priority queue
     #if UPDATE_MIN_SENTINEL == 1
     queue = (lss_hcct_node_t**)malloc((epsilon+1)*sizeof(lss_hcct_node_t*));
+    if (queue == NULL) {
+			printf("[hcct] error while allocating lazy priority queue... Quitting!\n");
+			exit(1);
+	}		
+    
+    #if USE_MALLOC==0
     pool_alloc(hcct_pool, free_list, queue[epsilon], lss_hcct_node_t);
+    #else
+    queue[epsilon]=(lss_hcct_node_t*)malloc(sizeof(lss_hcct_node_t));
+    #endif        
     if (queue[epsilon] == NULL) {
-			printf("[hcct] error while initializing lazy priority queue... Quitting!\n");
-			return -1;
+			printf("[hcct] error while allocating sentinel... Quitting!\n");
+			exit(1);
 	}
     queue[epsilon]->counter = min = 0;
     #else    
     queue = (lss_hcct_node_t**)malloc(epsilon*sizeof(lss_hcct_node_t*));
-    #endif
     if (queue == NULL) {
-			printf("[hcct] error while initializing lazy priority queue... Quitting!\n");
-			return -1;
+			printf("[hcct] error while allocating lazy priority queue... Quitting!\n");
+			exit(1);
 	}
+    #endif    
     
     queue[0]        = hcct_root;
     num_queue_items = 1; // goes from 0 to epsilon
@@ -369,9 +406,7 @@ int hcct_init()
     min_idx         = epsilon-1;
     second_min_idx  = 0;
     
-    lss_enter_events=0;
-
-    return 0;
+    lss_enter_events = 0;
 }
 
 #if BURSTING==1
@@ -456,6 +491,11 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out, lss
 void hcct_dump()
 {
 	pid_t tid;
+			
+	#if SHOW_MESSAGES==1
+    tid=syscall(__NR_gettid);
+    printf("[hcct] removing data structures for thread %d\n", tid);
+    #endif
 	
 	#if DUMP_TREE==1
 	unsigned long nodes=0;
@@ -493,17 +533,15 @@ void hcct_dump()
     fclose(out);
 
 	#endif
-	
-	#if SHOW_MESSAGES==1
-    tid=syscall(__NR_gettid);
-    printf("[hcct] removing data structures for thread %d\n", tid);
-    #endif
     
 	// Free memory used by custom allocator and by lazy priority queue
+	#if USE_MALLOC==0
 	pool_cleanup(hcct_pool);
+	#endif
 	free(queue);
 	
-	// for instance, after trace_end() some events may still occur!
-	stack_idx=0;
-	stack[0]=NULL;
+	// for instance, after trace_end() some events may still occur!	
+	hcct_root=NULL; // see first instruction in hcct_init()
+	stack_idx=0; stack[0]=NULL; // see if parent==NULL in hcct_enter()
+		
 }

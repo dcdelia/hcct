@@ -29,6 +29,7 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c
 		$(CC) -c cct.c -DUSE_MALLOC -o cct_malloc.o
 		$(CC) -c empty.c
 		$(CC) -c lss-hcct.c
+		$(CC) -c lss-hcct.c -DUSE_MALLOC -o lss-hcct_malloc.o
 		$(CC) -c pool.c		
 		@# empty profiler
 		$(CC) -c frequency.c -DPROFILER_EMPTY
@@ -40,6 +41,7 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c
 		@# lss-hcct profiler
 		$(CC) -c frequency.c
 		$(CC) -shared lss-hcct.o frequency.o pool.o -o libhcct_lss.so $(WRAP)
+		$(CC) -shared lss-hcct_malloc.o frequency.o pool.o -o libhcct_lss_malloc.so $(WRAP)
 		@mkdir -p libs
 		@mv *.so libs/
 		@rm -f *.o		
@@ -93,7 +95,7 @@ install:
 		@echo "==========================================================="		
 		@echo
 		cp libs/* /usr/local/lib
-		cd /usr/local/lib && ln -f -s libhcct_cct_pthread.so libhcct.so		
+		cd /usr/local/lib && ln -f -s libhcct_lss.so libhcct.so		
 		@echo
 		@echo "====="
 		@echo "Done."
