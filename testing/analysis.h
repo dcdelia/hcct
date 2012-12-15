@@ -10,11 +10,15 @@
 #define LSS_FULL    2
 #define CCT_BURST   3
 #define LSS_BURST   4
+#define CCT_TIME	5
+#define LSS_TIME	6
 
 #define CCT_FULL_STRING     "cct"
 #define LSS_FULL_STRING     "lss-hcct"
 #define CCT_BURST_STRING    "cct-burst"
 #define LSS_BURST_STRING    "lss-hcct-burst"
+#define CCT_TIME_STRING		"cct-time"
+#define LSS_TIME_STRING		"lss-hcct-time"
 
 typedef struct hcct_sym_s hcct_sym_t;
 struct hcct_sym_s {
@@ -65,7 +69,9 @@ struct hcct_tree_s {
     double          epsilon;
     double          phi;
     UINT64			sampled_enter_events;
-    UINT64			exhaustive_enter_events; 
+    UINT64			exhaustive_enter_events;
+    UINT64			sum_of_tics;
+    UINT64			thread_tics;
 };
 
 #endif

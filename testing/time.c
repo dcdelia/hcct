@@ -27,7 +27,8 @@ UINT64			global_tics;
 
 // TLS
 __thread UINT64 thread_tics;
-__thread UINT64	enter_events;
+
+//~ __thread UINT64	enter_events;
 
 // shadow stack - legal values from 0 up to shadow_stack_idx-1
 __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
@@ -36,11 +37,12 @@ __thread int                shadow_stack_idx; // TODO
 // TODO
 #ifdef PROFILER_CCT
 #include "cct.h"
-//~ #else
-//~ #ifdef PROFILER_EMPTY
-//~ #include "empty.h"
+#else
+#ifdef PROFILER_EMPTY
+#include "empty.h"
 #else
 #include "lss-hcct.h"
+#endif
 #endif
 
 #if DUMP_TREE==1
@@ -88,7 +90,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 		// Initialize TLS
 		thread_tics=0;
         shadow_stack_idx=0;
-        enter_events=0;     
+        //~ enter_events=0;     
         
         char* value;
         value=getenv("SINTVL");
@@ -139,21 +141,14 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
 // Routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
-	//~ #if SHOW_MESSAGES==1
-	//~ printf("[profiler] entering routine %lX - shadow_stack_idx is %d\n", (ADDRINT)this_fn, shadow_stack_idx);
-	//~ #endif
-	
+
 	if (global_tics>thread_tics) {
-		UINT32 increment = global_tics - thread_tics;
-		//thread_tics=global_tics;
-		thread_tics+=increment;
-		#if SHOW_MESSAGES==1
-		//~ printf("[hcct] perform aligning\n");
-		#endif		
+		UINT32 increment = global_tics - thread_tics;		
+		thread_tics+=increment;		
 		hcct_align(increment);
 	}
 	
-	++enter_events;
+	//~ ++enter_events;
 			
 	// Shadow stack
 	shadow_stack[shadow_stack_idx].routine_id=(unsigned long)this_fn;
@@ -162,18 +157,11 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this
 
 // Routine exit
 void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_fn, void *call_site)
-{	
-	//~ #if SHOW_MESSAGES==1
-	//~ printf("[profiler] leaving routine %lX - shadow_stack_idx is %d\n", (ADDRINT)this_fn, shadow_stack_idx);
-	//~ #endif
-		
+{			
 	if (global_tics>thread_tics) {
 		UINT32 increment = global_tics - thread_tics;
-		thread_tics=global_tics;		
-		#if SHOW_MESSAGES==1
-		//~ printf("[hcct] perform aligning\n");
-		#endif				
-		hcct_align(increment);
+		thread_tics+=increment;
+		hcct_align(increment); // ignore current rtn_exit event during the alignment!
 	}
 	
     // Shadow stack
@@ -203,7 +191,7 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
         // Initialize TLS
         shadow_stack_idx=0;
         thread_tics=0;
-		enter_events=0;
+		//~ enter_events=0;
         	
         // Initialize analysis module
         hcct_init();

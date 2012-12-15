@@ -26,6 +26,10 @@ time:	Makefile time.c common.h pool.c pool.h cct.c cct.h
 		$(CC) -c lss-hcct.c -DPROFILE_TIME
 		$(CC) -shared time.o lss-hcct.o pool.o -o libhcct_lss_time.so -lrt $(WRAP)		
 		@mv libhcct_lss_time.so libs/
+		$(CC) -c time.c -DPROFILER_EMPTY
+		$(CC) -c empty.c -DPROFILE_TIME
+		$(CC) -shared time.o empty.o -o libhcct_empty_time.so -lrt $(WRAP)
+		@mv libhcct_empty_time.so libs/
 		@rm -f *.o
 		
 libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h frequency.c	
@@ -85,12 +89,13 @@ tools:	Makefile analysis.c analysis.h common.h
 
 install:
 		@echo
-		@echo "==========================================================="
-		@echo "If the operations below fail, please do them again as root!"
-		@echo "==========================================================="		
+		@echo "=========================================================="
+		@echo "If the operations below fail, please do: sudo make install"
+		@echo "=========================================================="		
 		@echo
+		cp -f tools/analysis /usr/local/bin/hcct_analysis
 		cp libs/* /usr/local/lib
-		cd /usr/local/lib && ln -f -s libhcct_lss_burst.so libhcct.so		
+		cd /usr/local/lib && ln -f -s libhcct_cct_time.so libhcct.so		
 		@echo
 		@echo "====="
 		@echo "Done."
