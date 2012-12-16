@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <asm/unistd.h> // syscall(__NR_gettid)
-#include <sys/types.h> // pid_t
+#include <asm/unistd.h>
+#include <sys/types.h>
 #include <fcntl.h>
-#include <unistd.h> // getcwd
+#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
 
@@ -15,7 +15,7 @@ extern char *program_invocation_name;
 extern char *program_invocation_short_name;
 
 pthread_key_t	tlsKey = 17;
-int	tlsKey_active = 0;
+UINT16			tlsKey_active = 0;
 
 typedef struct cct_node_s cct_node_t;
 struct cct_node_s {
@@ -73,7 +73,6 @@ cct_tls_t* __attribute__((no_instrument_function)) hcct_init()
 }
 
 static void __attribute__((no_instrument_function)) free_cct(cct_node_t* node) {
-	// free(NULL) is ok :)   
 	cct_node_t *ptr, *tmp;
     for (ptr=node->first_child; ptr!=NULL;) {
 		tmp=ptr->next_sibling;
@@ -93,8 +92,8 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
 	(*cct_enter_events)+=root->counter;
 	cct_node_t* ptr;
 
-	// Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
-	// Addresses in hexadecimal notation (useful for addr2line)
+	// syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
+	// addresses in hexadecimal notation (useful for addr2line, and also to save bytes)
 	fprintf(out, "v %lx %lx %lu %lx %lx\n", (unsigned long)root, (unsigned long)(parent),
 	                                        root->counter, root->routine_id, root->call_site);
       
@@ -108,7 +107,6 @@ void __attribute__ ((no_instrument_function)) hcct_dump_map() {
 	
 	pid_t pid=syscall(__NR_getpid);
 		
-	// Command to be executed: "cp /proc/<PID>/maps <name>.map\0" => 9+10+6+variable+5 bytes needed
 	char command[BUFLEN+1];
 	sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
 	
@@ -141,7 +139,7 @@ void __attribute__((no_instrument_function)) hcct_dump(cct_tls_t* tls)
     out = fdopen(ds, "w");    	    	    
 	
 	// c <tool>
-	fprintf(out, "c cct \n"); // do not remove the white space between cct and \n :)	    	    	
+	fprintf(out, "c cct \n"); // do not remove the white space between cct and \n	    	    	
 	    
 	// c <command> <process/thread id> <working directory>
 	char* cwd=getcwd(NULL, 0);
@@ -210,7 +208,7 @@ void __attribute__((no_instrument_function)) hcct_enter(ADDRINT routine_id, ADDR
     }
 
     tls->cct_nodes++;    
-    node=(cct_node_t*)malloc(sizeof(cct_node_t)); // TODO check ritorno malloc??
+    node=(cct_node_t*)malloc(sizeof(cct_node_t));
     if (node==NULL) {
 		printf("[hcct] error while allocating new CCT node... Quitting!\n");
 		exit(1);
@@ -276,13 +274,13 @@ void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
 		#endif
 }
 
-// Routine enter
+// routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {		
 		hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
 }
 
-// Routine exit
+// routine exit
 void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_fn, void *call_site)
 {	
         hcct_exit();
@@ -303,12 +301,12 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
 {                                
         
-        // Retrieve original routine address and argument        
+        // retrieve original routine address and argument        
         void* orig_arg=((void**)arg)[1];        
         void *(*start_routine)(void*)=((void**)arg)[0];
         free(arg);
         
-		// Run actual application thread's init routine
+		// run actual application thread's init routine
         void* ret=(*start_routine)(orig_arg);
 
 		#if SHOW_MESSAGES==1

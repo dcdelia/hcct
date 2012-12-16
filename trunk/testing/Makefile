@@ -83,9 +83,9 @@ test-burst:	Makefile example.c libs-burst
 		$(CC) -o test/lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
 
 				
-tools:	Makefile analysis.c analysis.h config.h
+tools:	Makefile symbols.c analysis.c analysis.h config.h
 		@mkdir -p tools
-		$(CC) -o tools/analysis analysis.c -lm
+		$(CC) -o tools/analysis analysis.c symbols.c -lm
 
 install:
 		@echo

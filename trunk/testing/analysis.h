@@ -73,4 +73,6 @@ struct hcct_tree_s {
     UINT64			thread_tics;
 };
 
+// Functions...
+
 #endif
