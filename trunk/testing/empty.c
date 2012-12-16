@@ -1,9 +1,4 @@
-#include <stdlib.h>
 #include "empty.h"
-
-void* hcct_get_root() {
-    return NULL;
-}
 
 void hcct_init() {
 }

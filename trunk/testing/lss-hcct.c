@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <asm/unistd.h> // syscall(__NR_gettid)
-#include <sys/types.h> // pid_t
+#include <asm/unistd.h>
+#include <sys/types.h>
 #include <fcntl.h>
-#include <unistd.h> // getcwd
+#include <unistd.h>
 #include <string.h>
-#include <math.h> // ceil
+#include <math.h>
 
 #define _GNU_SOURCE
 #include <errno.h>
@@ -14,7 +13,10 @@ extern char *program_invocation_name;
 extern char *program_invocation_short_name;
 
 #include "lss-hcct.h"
+
+#if USE_MALLOC==0
 #include "pool.h"
+#endif
 
 // swap macro
 #define swap_and_decr(a,b) {            \
@@ -33,36 +35,36 @@ UINT32  epsilon;
 double	epsilon_d;
 char*   dumpPath;
 
-// thread local storage
-__thread unsigned			stack_idx;
+// TLS
+__thread UINT16				stack_idx;
 __thread lss_hcct_node_t	*stack[STACK_MAX_DEPTH];
 __thread lss_hcct_node_t	*hcct_root;
+__thread UINT64				lss_enter_events;
+// lazy priority queue
+__thread UINT32				min, min_idx, num_queue_items, second_min_idx;
+__thread lss_hcct_node_t	**queue;
+__thread UINT16				queue_full;
 #if USE_MALLOC==0
+// custom allocator
 __thread pool_t				*hcct_pool;
 __thread void				*free_list;
 #endif
-__thread UINT32				min, min_idx, num_queue_items, second_min_idx;
-__thread lss_hcct_node_t	**queue;
-__thread int				queue_full;
-__thread UINT64				lss_enter_events;
 
 #if BURSTING
-extern unsigned long    sampling_interval;
-extern unsigned long    burst_length;
-extern unsigned short   burst_on;   // enable or disable bursting
-extern __thread int     aligned;
-extern __thread UINT64	exhaustive_enter_events;
+extern UINT32	sampling_interval;
+extern UINT32	burst_length;
+extern UINT16	burst_on;   // enable or disable bursting
 
-// legal values go from 0 to shadow_stack_idx-1
-extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
-extern __thread int                shadow_stack_idx; 
+extern __thread UINT64				exhaustive_enter_events;
+extern __thread UINT16				aligned;
+extern __thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH];
+extern __thread UINT16				shadow_stack_idx; // legal values: 0 to shadow_stack_idx-1
 #elif PROFILE_TIME==1
 extern UINT32						sampling_interval;
-extern __thread UINT64				thread_tics;
 
-// legal values go from 0 to shadow_stack_idx-1
+extern __thread UINT64				thread_tics;
 extern __thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH];
-extern __thread int					shadow_stack_idx; 
+extern __thread int					shadow_stack_idx; // legal values: 0 to shadow_stack_idx-1
 #endif
 
 // get parameters from environment variables
@@ -105,8 +107,8 @@ static void update_min() __attribute__((no_instrument_function))
         }
     #else
 
-    #if 1 // See paper for details
-    int i=min_idx+1; // Obviously, min has changed!
+    #if 1 // see paper for details
+    int i=min_idx+1; // obviously, min has changed!
     
     for (; i < num_queue_items && queue[i]->counter != min; ++i);
         
@@ -123,7 +125,7 @@ static void update_min() __attribute__((no_instrument_function))
         min_idx=i;
     }
 
-    #else // Another version (faster, slower?)
+    #else // another version
 
     int i=min_idx+1, j=0;
     UINT32 tmp=queue[min_idx]->counter;
@@ -246,13 +248,14 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site, UINT32 increment) {
     }
 
 	#if PROFILE_TIME==1	
-	if (increment==0) { // added cold node along path to hot node yet to be added
+	if (increment==0) { // new cold node along path to hot node yet to be added
 		node->counter=0;
 		UnsetMonitored(node);
 		return;
 	}
 	#endif
-    // Mark node as monitored
+    
+    // mark node as monitored
     SetMonitored(node);
 
     // if table is not full
@@ -266,7 +269,7 @@ void hcct_enter(ADDRINT routine_id, ADDRINT call_site, UINT32 increment) {
         node->counter = increment;
         #endif
         queue[num_queue_items++] = node;
-        queue_full = num_queue_items == epsilon;
+        queue_full = (num_queue_items == epsilon);
         return;
     }
 
@@ -364,6 +367,8 @@ void hcct_init()
    
 	#if BURSTING==1
     if (sampling_interval==0) init_bursting();
+    #elif PROFILE_TIME==1
+    if (sampling_interval==0) init_sampling();
     #endif
    
 	if (epsilon==0) hcct_getenv(); // will be executed only once
@@ -447,13 +452,13 @@ void hcct_align() {
     stack_idx=0;
     
     #if UPDATE_ALONG_TREE==1
-    // Updates all nodes related to routines actually in the the stack
+    // updates all nodes related to routines actually in the the stack
     int i;
     for (i=0; i<shadow_stack_idx; ++i)
         hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site);
     aligned=1;
     #else
-    // Uses hcct_enter only on current routine and on nodes that have to be created along the path
+    // uses hcct_enter only on current routine and on nodes that have to be created along the path
     lss_hcct_node_t *parent, *node;
     int i;
     
@@ -469,25 +474,25 @@ void hcct_align() {
             stack[stack_idx]=node;
             ++i;            
         } else {
-            // I have to create additional nodes in the next for cycle
+            // I have to create additional nodes in the next for iteration
             --stack_idx;
             break;            
         }        
     }
     #else
-    // Should be better :)
+    // should be better
     parent=stack[stack_idx];
     for (i=0; i<shadow_stack_idx-1;) {
         for (node=parent->first_child; node!=NULL; node=node->next_sibling)
             if (node->routine_id == shadow_stack[i].routine_id &&
                 node->call_site == shadow_stack[i].call_site) break;
         if (node!=NULL) {
-            // No need to update counter here
+            // no need to update counter here
             stack[++stack_idx]=node;
             parent=node;
             ++i;            
         } else {
-            // I have to create additional nodes in the next for cycle            
+            // I have to create additional nodes in the next for iteration
             break;            
         }        
     }    
@@ -522,13 +527,25 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out, lss
 	(*nodes)++;
 	lss_hcct_node_t* ptr;
 
-	// Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
-	// Addresses in hexadecimal notation (useful for addr2line)
+	// syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
+	// addresses in hexadecimal notation (useful for addr2line, and also to save bytes)
 	fprintf(out, "v %lx %lx %lu %lx %lx\n", (unsigned long)root, (unsigned long)(root->parent),
 	                                        root->counter, root->routine_id, root->call_site);
         
 	for (ptr = root->first_child; ptr!=NULL; ptr=ptr->next_sibling)
 		hcct_dump_aux(out, ptr, nodes);
+}
+#endif
+
+#if USE_MALLOC==1
+static void __attribute__((no_instrument_function)) free_hcct(lss_hcct_node_t* node) {	
+   lss_hcct_node_t *ptr, *tmp;
+    for (ptr=node->first_child; ptr!=NULL;) {
+		tmp=ptr->next_sibling;
+        free_cct(ptr);
+        ptr=tmp;
+    }    
+    free(node);
 }
 #endif
 
@@ -581,10 +598,12 @@ void hcct_dump()
 
 	#endif
     
-	// Free memory used by custom allocator and by lazy priority queue
+	// free memory used by tree nodes and lazy priority queue
 	#if USE_MALLOC==0
 	pool_cleanup(hcct_pool);
-	#endif
+	#else
+	free_hcct(hcct_root);
+	#endif	
 	free(queue);
 	
 	// for instance, after trace_end() some events may still occur!	

@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <asm/unistd.h> // syscall(__NR_gettid)
-#include <sys/types.h> // pid_t
+#include <asm/unistd.h>
+#include <sys/types.h>
 #include <fcntl.h>
-#include <unistd.h> // getcwd
+#include <unistd.h>
 #include <string.h>
 
 #define _GNU_SOURCE
@@ -15,39 +14,39 @@ extern char *program_invocation_short_name;
 #include "cct.h"
 
 #if USE_MALLOC==0
-	#include "pool.h"
-	#define PAGE_SIZE		1024
-	__thread pool_t     *cct_pool;
-	__thread void       *cct_free_list;
+#include "pool.h"		
 #endif
-
-// thread local storage
-__thread int         cct_stack_idx;
-__thread cct_node_t *cct_stack[STACK_MAX_DEPTH];
-__thread cct_node_t *cct_root;
-__thread UINT32      cct_nodes;
 
 // global parameters set by hcct_getenv()
 char*   dumpPath;
-UINT16	getenv_done;	// flag
+UINT16	getenv_done;
+
+// TLS
+__thread UINT16		cct_stack_idx;
+__thread UINT32		cct_nodes;
+__thread cct_node_t	*cct_stack[STACK_MAX_DEPTH];
+__thread cct_node_t	*cct_root;
+#if USE_MALLOC==0
+// custom allocator
+__thread pool_t     *cct_pool;
+__thread void       *cct_free_list;
+#endif
 
 #if BURSTING==1
-extern unsigned long    sampling_interval;
-extern unsigned long    burst_length;
-extern unsigned short   burst_on;   // enable or disable bursting
-extern __thread int     aligned;
-extern __thread UINT64	exhaustive_enter_events;
+extern UINT32	sampling_interval;
+extern UINT32	burst_length;
+extern UINT16	burst_on;
 
-// legal values go from 0 to shadow_stack_idx-1
-extern __thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
-extern __thread int                shadow_stack_idx; 
+extern __thread UINT16				aligned;
+extern __thread UINT64				exhaustive_enter_events;
+extern __thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH]; 
+extern __thread UINT16				shadow_stack_idx; // legal values: 0 to shadow_stack_idx-1
 #elif PROFILE_TIME==1
 extern UINT32						sampling_interval;
-extern __thread UINT64				thread_tics;
 
-// legal values go from 0 to shadow_stack_idx-1
+extern __thread UINT64				thread_tics;
 extern __thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH];
-extern __thread int					shadow_stack_idx; 
+extern __thread UINT16				shadow_stack_idx; // legal values: 0 to shadow_stack_idx-1
 #endif
 
 // get parameters from environment variables
@@ -66,6 +65,8 @@ void hcct_init()
     
     #if BURSTING==1
     if (sampling_interval==0) init_bursting();
+    #elif PROFILE_TIME==1
+    if (sampling_interval==0) init_sampling();
     #endif
     
     if (getenv_done==0) hcct_getenv(); // will be executed only once
@@ -113,13 +114,13 @@ void hcct_align() {
     cct_stack_idx=0;
     
     #if UPDATE_ALONG_TREE==1
-    // Updates all nodes related to routines actually in the the stack
+    // updates all nodes related to routines actually in the the stack
     int i;
     for (i=0; i<shadow_stack_idx; ++i)
         hcct_enter(shadow_stack[i].routine_id, shadow_stack[i].call_site);
     aligned=1;
     #else
-    // Uses hcct_enter only on current routine and on nodes that have to be created along the path
+    // uses hcct_enter only on current routine and on nodes that have to be created along the path
     cct_node_t *parent, *node;
     int i;
     
@@ -131,29 +132,29 @@ void hcct_align() {
             if (node->routine_id == shadow_stack[i].routine_id &&
                 node->call_site == shadow_stack[i].call_site) break;
         if (node!=NULL) {
-            // No need to update counter here
+            // no need to update counter here
             cct_stack[cct_stack_idx]=node;
             ++i;            
         } else {
-            // I have to create additional nodes in the next for cycle
+            // I have to create additional nodes in the next for iteration
             --cct_stack_idx;
             break;            
         }        
     }
     #else
-    // Should be better :)
+    // should be better
     parent=cct_stack[cct_stack_idx];
     for (i=0; i<shadow_stack_idx-1;) {
         for (node=parent->first_child; node!=NULL; node=node->next_sibling)
             if (node->routine_id == shadow_stack[i].routine_id &&
                 node->call_site == shadow_stack[i].call_site) break;
         if (node!=NULL) {
-            // No need to update counter here
+            // no need to update counter here
             cct_stack[++cct_stack_idx]=node;
             parent=node;
             ++i;            
         } else {
-            // I have to create additional nodes in the next for cycle            
+            // I have to create additional nodes in the next for iteration
             break;            
         }        
     }
@@ -251,8 +252,8 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
 	(*cct_enter_events)+=root->counter;
 	cct_node_t* ptr;
 
-	// Syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
-	// Addresses in hexadecimal notation (useful for addr2line)
+	// syntax: v <node id> <parent id> <counter> <routine_id> <call_site>
+	// addresses in hexadecimal notation (useful for addr2line, and also to save bytes))
 	fprintf(out, "v %lx %lx %lu %lx %lx\n", (unsigned long)root, (unsigned long)(parent),
 	                                        root->counter, root->routine_id, root->call_site);
       
@@ -262,8 +263,7 @@ static void __attribute__((no_instrument_function)) hcct_dump_aux(FILE* out,
 #endif
 
 #if USE_MALLOC==1
-static void __attribute__((no_instrument_function)) free_cct(cct_node_t* node) {
-	// free(NULL) is ok :)   
+static void __attribute__((no_instrument_function)) free_cct(cct_node_t* node) {	
    cct_node_t *ptr, *tmp;
     for (ptr=node->first_child; ptr!=NULL;) {
 		tmp=ptr->next_sibling;
@@ -325,10 +325,10 @@ void hcct_dump()
 	#endif
 	    	    	
 	#if USE_MALLOC==1
-	// Recursively free the CCT
+	// recursively free the CCT
 	free_cct(cct_root);	
 	#else
-	// Free memory used by custom allocator
+	// free memory used by custom allocator
 	pool_cleanup(cct_pool);	
 	#endif
 	

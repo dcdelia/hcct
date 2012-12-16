@@ -17,7 +17,7 @@ void freeSym(hcct_sym_t* sym) {
 }
 
 void freeTreeAux(hcct_node_t* node) {	
-    //if (node==NULL) return; // not needed
+    //if (node==NULL) return;
     hcct_node_t *ptr, *tmp;
     for (ptr=node->first_child; ptr!=NULL;) {
 		tmp=ptr->next_sibling;

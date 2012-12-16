@@ -10,13 +10,13 @@ burst:	libs-burst test-burst
 
 exhaustive:	libs test
 
-pthread: Makefile common.h cct_pthread.c
+pthread: Makefile config.h cct_pthread.c
 		$(CC) -c cct_pthread.c
 		$(CC) -shared cct_pthread.c -o libhcct_cct_pthread.so $(WRAP)
 		@mv libhcct_cct_pthread.so libs/
 		@rm -f *.o
 
-time:	Makefile time.c common.h pool.c pool.h cct.c cct.h
+time:	Makefile time.c config.h pool.c pool.h cct.c cct.h
 		$(CC) -c time.c -DPROFILER_CCT
 		$(CC) -c cct.c -DPROFILE_TIME		
 		$(CC) -c pool.c	
@@ -32,7 +32,7 @@ time:	Makefile time.c common.h pool.c pool.h cct.c cct.h
 		@mv libhcct_empty_time.so libs/
 		@rm -f *.o
 		
-libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h frequency.c	
+libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h config.h pool.c pool.h frequency.c	
 		$(CC) -c cct.c
 		$(CC) -c cct.c -DUSE_MALLOC -o cct_malloc.o
 		$(CC) -c empty.c
@@ -54,7 +54,7 @@ libs:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c
 		@mv *.so libs/
 		@rm -f *.o		
 
-libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h pool.c pool.h frequency_bursting.c		
+libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h config.h pool.c pool.h frequency_bursting.c		
 		$(CC) -c pool.c
 		$(CC) -c empty.c -DBURSTING
 		$(CC) -c frequency_bursting.c -DPROFILER_EMPTY
@@ -69,21 +69,21 @@ libs-burst:	Makefile cct.c cct.h lss-hcct.c lss-hcct.h empty.c empty.h common.h 
 		@mv *.so libs/
 		@rm -f *.o
 		
-test:	Makefile example.c libs/
+test:	Makefile example.c libs
 		@mkdir -p test
 		$(CC) -o test/empty example.c -L./libs -lhcct_empty $(INSTR)
 		$(CC) -o test/cct example.c -L./libs -lhcct_cct $(INSTR)
 		$(CC) -o test/cct_malloc example.c -L./libs -lhcct_cct_malloc $(INSTR)
 		$(CC) -o test/lss example.c -L./libs -lhcct_lss $(INSTR)
 		
-test-burst:	Makefile example.c libs/
+test-burst:	Makefile example.c libs-burst
 		@mkdir -p test
 		$(CC) -o test/empty_burst example.c -L./libs -lhcct_empty_burst $(INSTR)
 		$(CC) -o test/cct_burst example.c -L./libs -lhcct_cct_burst $(INSTR)
 		$(CC) -o test/lss_burst example.c -L./libs -lhcct_lss_burst $(INSTR)
 
 				
-tools:	Makefile analysis.c analysis.h common.h
+tools:	Makefile analysis.c analysis.h config.h
 		@mkdir -p tools
 		$(CC) -o tools/analysis analysis.c -lm
 
