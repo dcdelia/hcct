@@ -51,6 +51,8 @@ __thread void				*free_list;
 #endif
 
 #if BURSTING
+void __attribute__((no_instrument_function)) init_bursting();
+
 extern UINT32	sampling_interval;
 extern UINT32	burst_length;
 extern UINT16	burst_on;   // enable or disable bursting
@@ -60,6 +62,8 @@ extern __thread UINT16				aligned;
 extern __thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH];
 extern __thread UINT16				shadow_stack_idx; // legal values: 0 to shadow_stack_idx-1
 #elif PROFILE_TIME==1
+void __attribute__((no_instrument_function)) init_sampling();
+
 extern UINT32						sampling_interval;
 
 extern __thread UINT64				thread_tics;
@@ -542,7 +546,7 @@ static void __attribute__((no_instrument_function)) free_hcct(lss_hcct_node_t* n
    lss_hcct_node_t *ptr, *tmp;
     for (ptr=node->first_child; ptr!=NULL;) {
 		tmp=ptr->next_sibling;
-        free_cct(ptr);
+        free_hcct(ptr);
         ptr=tmp;
     }    
     free(node);

@@ -33,6 +33,8 @@ __thread void       *cct_free_list;
 #endif
 
 #if BURSTING==1
+void __attribute__((no_instrument_function)) init_bursting();
+
 extern UINT32	sampling_interval;
 extern UINT32	burst_length;
 extern UINT16	burst_on;
@@ -42,6 +44,8 @@ extern __thread UINT64				exhaustive_enter_events;
 extern __thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH]; 
 extern __thread UINT16				shadow_stack_idx; // legal values: 0 to shadow_stack_idx-1
 #elif PROFILE_TIME==1
+void __attribute__((no_instrument_function)) init_sampling();
+
 extern UINT32						sampling_interval;
 
 extern __thread UINT64				thread_tics;
@@ -308,7 +312,7 @@ void hcct_dump()
 	fprintf(out, "c cct-time %lu %llu\n", sampling_interval, thread_tics);
 	#else
 	// c <tool>
-	fprintf(out, "c cct \n"); // do not remove the white space between cct and \n :)	    	    
+	fprintf(out, "c cct \n"); // do not remove the white space between cct and \n	    	    
 	#endif
 	    
 	// c <command> <process/thread id> <working directory>
