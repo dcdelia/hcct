@@ -1,17 +1,15 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <unistd.h> // syscall()
-#include <asm/unistd.h> // syscall(__NR_gettid)
-#include <sys/types.h> // pid_t
-
+#include <unistd.h>
+#include <asm/unistd.h>
+#include <sys/types.h>
 #include <string.h>
+
 #define _GNU_SOURCE
 #include <errno.h>
 extern char *program_invocation_short_name;
 
-// TODO
 #ifdef PROFILER_CCT
 #include "cct.h"
 #else
@@ -22,20 +20,18 @@ extern char *program_invocation_short_name;
 #endif
 #endif
 
-#if DUMP_TREE==1
-	#ifndef PROFILER_EMPTY
-	static void __attribute__ ((no_instrument_function)) hcct_dump_map() {
+#if DUMP_TREE==1 && PROFILER_EMPTY==0
+static void __attribute__ ((no_instrument_function)) hcct_dump_map() {
 	
-		pid_t pid=syscall(__NR_getpid);
+	pid_t pid=syscall(__NR_getpid);
 			
-		char command[BUFLEN+1];	
-		sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
+	char command[BUFLEN+1];	
+	sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
 	
-		int ret=system(command);
-		if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");		
+	int ret=system(command);
+	if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");		
 	
-	}
-	#endif
+}
 #endif
  
 // execute before main
@@ -46,7 +42,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
         printf("[profiler] program start - tid %d\n", tid);
         #endif
         
-        hcct_init(); // we really need that?!?
+        hcct_init();
 }
 
 // execute after termination
@@ -57,22 +53,20 @@ void __attribute__ ((destructor, no_instrument_function)) trace_end(void)
         printf("[profiler] program exit - tid %d\n", tid);
         #endif
         
-        #if DUMP_TREE==1
-			#ifndef PROFILER_EMPTY
-			hcct_dump_map();
-			#endif
+        #if DUMP_TREE==1 && PROFILER_EMPTY==0
+		hcct_dump_map();			
         #endif
                 
         hcct_dump();
 }
 
-// Routine enter
+// routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {		
 		hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
 }
 
-// Routine exit
+// routine exit
 void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_fn, void *call_site)
 {	
         hcct_exit();
@@ -85,8 +79,7 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 		pid_t tid=syscall(__NR_gettid);
 		printf("[profiler] pthread_exit - tid %d\n", tid);
 		#endif
-		
-		// Exit stuff
+				
 		hcct_dump();
         
         __real_pthread_exit(value_ptr);
@@ -97,20 +90,19 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
 {                                
         hcct_init();
 
-        // Retrieve original routine address and argument        
+        // retrieve original routine address and argument        
         void* orig_arg=((void**)arg)[1];        
         void *(*start_routine)(void*)=((void**)arg)[0];
         free(arg);
         
-		// Run actual application thread's init routine
+		// run actual application thread's init routine
         void* ret=(*start_routine)(orig_arg);
 
 		#if SHOW_MESSAGES==1
 		pid_t tid=syscall(__NR_gettid);
         printf("[profiler] return - tid %d\n", tid);
         #endif
-        
-        // Exit stuff
+
         hcct_dump();
         
         return ret;

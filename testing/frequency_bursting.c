@@ -1,36 +1,31 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <asm/unistd.h>
+#include <sys/types.h>
+#include <string.h>
 #include <time.h>
 
-#include <unistd.h> // syscall()
-#include <asm/unistd.h> // syscall(__NR_gettid)
-#include <sys/types.h> // pid_t, timer_t
-
-#include <string.h>
 #define _GNU_SOURCE
 #include <errno.h>
 extern char *program_invocation_short_name;
 
-// timer globals
-pthread_t       timerThreadID;
-unsigned short  burst_on;   // enable or disable bursting
-unsigned long   sampling_interval;
-unsigned long   burst_length;
-
 #define BURSTING 1
-#include "common.h"
+#include "config.h"
+
+// timer globals
+pthread_t	timerThreadID;
+UINT16		burst_on;
+UINT32		sampling_interval;
+UINT32		burst_length;
 
 // TLS
-__thread UINT64	exhaustive_enter_events;
+__thread UINT64				exhaustive_enter_events;
+__thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH];
+__thread UINT16				shadow_stack_idx; // legal values: 0 to shadow_stack_idx-1
+__thread UINT16				aligned;
 
-// shadow stack - legal values from 0 up to shadow_stack_idx-1
-__thread hcct_stack_node_t  shadow_stack[STACK_MAX_DEPTH];
-__thread int                shadow_stack_idx; // TODO
-__thread int                aligned;
-
-
-// TODO
 #ifdef PROFILER_CCT
 #include "cct.h"
 #else
@@ -41,24 +36,21 @@ __thread int                aligned;
 #endif
 #endif
 
-#if DUMP_TREE==1
-	#ifndef PROFILER_EMPTY
-	static void __attribute__ ((no_instrument_function)) hcct_dump_map() {
+#if DUMP_TREE==1 && PROFILER_EMPTY==0
+static void __attribute__ ((no_instrument_function)) hcct_dump_map() {
 	
-		pid_t pid=syscall(__NR_getpid);
-		
-		// Command to be executed: "cp /proc/<PID>/maps <name>.map\0" => 9+10+6+variable+5 bytes needed
-		char command[BUFLEN+1];
-		sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
+	pid_t pid=syscall(__NR_getpid);
+				
+	char command[BUFLEN+1];
+	sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
 	
-		int ret=system(command);
-		if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");	
+	int ret=system(command);
+	if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");	
 	
-	}
-	#endif
+}
 #endif
 
-// separate thread to handle timer
+// timer thread
 void __attribute__((no_instrument_function)) timerThread(void* arg)
 {
     struct timespec enabled, disabled;
@@ -67,24 +59,24 @@ void __attribute__((no_instrument_function)) timerThread(void* arg)
     disabled.tv_sec=0;
     disabled.tv_nsec=sampling_interval-burst_length;
     
-    while(1)
-    {
-        if (burst_on!=0) {
-            // Disabling bursting
+    while(1) {
+        if (burst_on!=0) { 
+            // disable bursting
             burst_on=0;
-            clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &disabled, NULL);
+            clock_nanosleep(TIMER_TYPE, 0, &disabled, NULL);
         } else {
-            // Enabling bursting
+            // enable bursting
             burst_on=1;
-            clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &enabled, NULL);
+            clock_nanosleep(TIMER_TYPE, 0, &enabled, NULL);
         }
     }
 }
 
+// initialize timer thread
 void __attribute__ ((no_instrument_function)) init_bursting()
 {
         burst_on=1;
-        
+                
         char* value;
         value=getenv("SINTVL");
         if (value == NULL || value[0]=='\0')
@@ -108,14 +100,11 @@ void __attribute__ ((no_instrument_function)) init_bursting()
             }
         }        
                 
-        // Initialize shadow stack
+        // initialize also TLS fields for calling thread
         shadow_stack_idx=0;
         aligned=1;
-        
-        // Total number of rtn enter events
 		exhaustive_enter_events=0;	
-		
-		// conviene passare burston come parametro?
+				
 		if (__real_pthread_create(&timerThreadID, NULL, timerThread, NULL)) {
             printf("[profiler] error creating timer thread - exiting!\n");
             exit(1);
@@ -138,7 +127,7 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 // execute after termination
 void __attribute__((destructor, no_instrument_function)) trace_end(void)
 {
-		// Close timer thread
+		// close timer thread
 		#if SHOW_MESSAGES==1
         printf("[profiler] closing timer thread...\n");
         #endif        
@@ -150,21 +139,18 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
         printf("[profiler] program exit - tid %d\n", tid);
         #endif
         
-        #if DUMP_TREE==1
-			#ifndef PROFILER_EMPTY
-			hcct_dump_map();
-			#endif
+        #if DUMP_TREE==1 && PROFILER_EMPTY==0
+		hcct_dump_map();		
 		#endif
         
         hcct_dump();
 }
 
-// Routine enter
+// routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
 	++exhaustive_enter_events;
-			
-	// Shadow stack
+				
 	shadow_stack[shadow_stack_idx].routine_id=(unsigned long)this_fn;
 	shadow_stack[shadow_stack_idx++].call_site=(unsigned long)call_site;
 	
@@ -176,15 +162,14 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this
     }
 }
 
-// Routine exit
+// routine exit
 void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_fn, void *call_site)
-{	
-    // Shadow stack
+{	    
     --shadow_stack_idx;
                 
     if (burst_on==0) aligned=0;
 	else {
-        // Aligning is not needed (no info provided for tree update)
+        // aligning is not needed (no info provided for tree update)
         if (aligned==1) hcct_exit();
     }                                        
 }
@@ -197,7 +182,6 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 		printf("[profiler] pthread_exit - tid %d\n", tid);
 		#endif
 		
-		// Exit stuff
 		hcct_dump();
         
         __real_pthread_exit(value_ptr);
@@ -206,29 +190,26 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 // handles thread termination made without pthread_exit
 void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
 {                
-        // Initialize shadow stack
+        // initialize TLS
         shadow_stack_idx=0;
         aligned=1;
-        
-        // Total number of rtn enter events
 		exhaustive_enter_events=0;
         
         hcct_init();
 
-        // Retrieve original routine address and argument        
+        // retrieve original routine address and argument        
         void* orig_arg=((void**)arg)[1];        
         void *(*start_routine)(void*)=((void**)arg)[0];
         free(arg);
         
-		// Run actual application thread's init routine
+		// run actual application thread's init routine
         void* ret=(*start_routine)(orig_arg);
 
 		#if SHOW_MESSAGES==1
 		pid_t tid=syscall(__NR_gettid);
         printf("[profiler] return - tid %d\n", tid);
         #endif
-        
-        // Exit stuff
+                
         hcct_dump();
         
         return ret;

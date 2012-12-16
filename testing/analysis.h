@@ -1,9 +1,8 @@
 #ifndef __ANALYSIS__
 #define __ANALYSIS__
 
-#include <sys/types.h> // pid_t
-
-#include "common.h"
+#include <sys/types.h>
+#include "config.h"
 
 // Discriminate tool used to create logfile
 #define CCT_FULL    1
@@ -50,7 +49,7 @@ struct hcct_map_s {
 	ADDRINT		start;
 	ADDRINT		end;	
 	char*		pathname;
-	ADDRINT		offset; // offset into the file - TODO: useles??
+	ADDRINT		offset; // currently unused
 	hcct_map_t*	next;
 };
 

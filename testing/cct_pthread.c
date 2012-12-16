@@ -7,7 +7,7 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "common.h"
+#include "config.h"
 
 #define _GNU_SOURCE
 #include <errno.h>
