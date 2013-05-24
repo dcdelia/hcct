@@ -570,7 +570,7 @@ void hcct_dump()
     int ds;	    
     char dumpFileName[BUFLEN+1];	    
     if (dumpPath==NULL) {	        
-        sprintf(dumpFileName, "%s-%d.tree", program_invocation_short_name, tid);
+        sprintf(dumpFileName, "%s/%s-%d.tree", DEFAULT_DUMP_PATH, program_invocation_short_name, tid);
     } else {            
 		sprintf(dumpFileName, "%s/%s-%d.tree", dumpPath, program_invocation_short_name, tid);
     }
