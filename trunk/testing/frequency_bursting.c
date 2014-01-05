@@ -15,16 +15,16 @@ extern char *program_invocation_short_name;
 #include "config.h"
 
 // timer globals
-pthread_t	timerThreadID;
-UINT16		burst_on;
-UINT32		sampling_interval;
-UINT32		burst_length;
+pthread_t timerThreadID;
+UINT16    burst_on;
+UINT32    sampling_interval;
+UINT32    burst_length;
 
 // TLS
-__thread UINT64				exhaustive_enter_events;
-__thread hcct_stack_node_t	shadow_stack[STACK_MAX_DEPTH];
-__thread UINT16				shadow_stack_idx; // legal values: 0 to shadow_stack_idx-1
-__thread UINT16				aligned;
+__thread UINT64       _TLS_exhaustive_enter_events;
+__thread hcct_stack_node_t  _TLS_shadow_stack[STACK_MAX_DEPTH];
+__thread UINT16       _TLS_shadow_stack_idx; // legal values: 0 to _TLS_shadow_stack_idx-1
+__thread UINT16       _TLS_aligned;
 
 #ifdef PROFILER_CCT
 #include "cct.h"
@@ -38,15 +38,15 @@ __thread UINT16				aligned;
 
 #if DUMP_TREE==1 && PROFILER_EMPTY==0
 static void __attribute__ ((no_instrument_function)) hcct_dump_map() {
-	
-	pid_t pid=syscall(__NR_getpid);
-				
-	char command[BUFLEN+1];
-	sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
-	
-	int ret=system(command);
-	if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");	
-	
+  
+  pid_t pid=syscall(__NR_getpid);
+        
+  char command[BUFLEN+1];
+  sprintf(command, "cp -f /proc/%d/maps %s.map && chmod +w %s.map", pid, program_invocation_short_name, program_invocation_short_name);
+  
+  int ret=system(command);
+  if (ret!=0) printf("[profiler] WARNING: unable to read currently mapped memory regions from /proc\n");  
+  
 }
 #endif
 
@@ -101,11 +101,11 @@ void __attribute__ ((no_instrument_function)) init_bursting()
         }        
                 
         // initialize also TLS fields for calling thread
-        shadow_stack_idx=0;
-        aligned=1;
-		exhaustive_enter_events=0;	
-				
-		if (__real_pthread_create(&timerThreadID, NULL, timerThread, NULL)) {
+        _TLS_shadow_stack_idx=0;
+        _TLS_aligned=1;
+    _TLS_exhaustive_enter_events=0; 
+        
+    if (__real_pthread_create(&timerThreadID, NULL, timerThread, NULL)) {
             printf("[profiler] error creating timer thread - exiting!\n");
             exit(1);
         }
@@ -114,7 +114,7 @@ void __attribute__ ((no_instrument_function)) init_bursting()
 // execute before main
 void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 {
-		
+    
         #if SHOW_MESSAGES==1
         pid_t tid=syscall(__NR_gettid);
         printf("[profiler] program start - tid %d\n", tid);
@@ -127,21 +127,21 @@ void __attribute__ ((constructor, no_instrument_function)) trace_begin(void)
 // execute after termination
 void __attribute__((destructor, no_instrument_function)) trace_end(void)
 {
-		// close timer thread
-		#if SHOW_MESSAGES==1
+    // close timer thread
+    #if SHOW_MESSAGES==1
         printf("[profiler] closing timer thread...\n");
         #endif        
         if (pthread_cancel(timerThreadID))
             printf("[profiler] WARNING: could not close timer thread\n");
 
-		#if SHOW_MESSAGES==1
-		pid_t tid=syscall(__NR_gettid);
+    #if SHOW_MESSAGES==1
+    pid_t tid=syscall(__NR_gettid);
         printf("[profiler] program exit - tid %d\n", tid);
         #endif
         
         #if DUMP_TREE==1 && PROFILER_EMPTY==0
-		hcct_dump_map();		
-		#endif
+    hcct_dump_map();    
+    #endif
         
         hcct_dump();
 }
@@ -149,40 +149,40 @@ void __attribute__((destructor, no_instrument_function)) trace_end(void)
 // routine enter
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
-	++exhaustive_enter_events;
-				
-	shadow_stack[shadow_stack_idx].routine_id=(unsigned long)this_fn;
-	shadow_stack[shadow_stack_idx++].call_site=(unsigned long)call_site;
-	
-	if (burst_on==0) aligned=0;
-	else {
-		if (sampling_interval==0) hcct_init();
-        if (aligned==0) hcct_align();
+  ++_TLS_exhaustive_enter_events;
+        
+  _TLS_shadow_stack[_TLS_shadow_stack_idx].routine_id=(unsigned long)this_fn;
+  _TLS_shadow_stack[_TLS_shadow_stack_idx++].call_site=(unsigned long)call_site;
+  
+  if (burst_on==0) _TLS_aligned=0;
+  else {
+    if (sampling_interval==0) hcct_init();
+        if (_TLS_aligned==0) hcct_align();
         else hcct_enter((unsigned long)this_fn, (unsigned long)call_site);
     }
 }
 
 // routine exit
 void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_fn, void *call_site)
-{	    
-    --shadow_stack_idx;
+{     
+    --_TLS_shadow_stack_idx;
                 
-    if (burst_on==0) aligned=0;
-	else {
+    if (burst_on==0) _TLS_aligned=0;
+  else {
         // aligning is not needed (no info provided for tree update)
-        if (aligned==1) hcct_exit();
+        if (_TLS_aligned==1) hcct_exit();
     }                                        
 }
 
 // wrap pthread_exit()
 void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr)
 {
-		#if SHOW_MESSAGES==1
-		pid_t tid=syscall(__NR_gettid);
-		printf("[profiler] pthread_exit - tid %d\n", tid);
-		#endif
-		
-		hcct_dump();
+    #if SHOW_MESSAGES==1
+    pid_t tid=syscall(__NR_gettid);
+    printf("[profiler] pthread_exit - tid %d\n", tid);
+    #endif
+    
+    hcct_dump();
         
         __real_pthread_exit(value_ptr);
 }
@@ -191,9 +191,9 @@ void __attribute__((no_instrument_function)) __wrap_pthread_exit(void *value_ptr
 void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
 {                
         // initialize TLS
-        shadow_stack_idx=0;
-        aligned=1;
-		exhaustive_enter_events=0;
+        _TLS_shadow_stack_idx=0;
+        _TLS_aligned=1;
+        _TLS_exhaustive_enter_events=0;
         
         hcct_init();
 
@@ -202,11 +202,11 @@ void* __attribute__((no_instrument_function)) aux_pthread_create(void *arg)
         void *(*start_routine)(void*)=((void**)arg)[0];
         free(arg);
         
-		// run actual application thread's init routine
+    // run actual application thread's init routine
         void* ret=(*start_routine)(orig_arg);
 
-		#if SHOW_MESSAGES==1
-		pid_t tid=syscall(__NR_gettid);
+    #if SHOW_MESSAGES==1
+    pid_t tid=syscall(__NR_gettid);
         printf("[profiler] return - tid %d\n", tid);
         #endif
                 
