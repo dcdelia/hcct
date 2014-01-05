@@ -4,7 +4,7 @@ CC  =		gcc $(CFLAGS)
 WRAP =		-Wl,-wrap,pthread_create -Wl,-wrap,pthread_exit
 INSTR =		-finstrument-functions -lpthread $(WRAP)
 
-all:	exhaustive burst tools time pthread install
+all:	exhaustive burst tools time pthread
 
 burst:	libs-burst test-burst
 
