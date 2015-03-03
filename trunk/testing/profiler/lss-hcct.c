@@ -85,7 +85,7 @@ static void __attribute__((no_instrument_function)) hcct_getenv() {
     if (d<=0 || d>1.0) { // 0 is an error code
             epsilon=EPSILON;
             epsilon_d=1.0/EPSILON;
-            printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%f) instead\n", epsilon_d);
+            printf("[hcct] WARNING: invalid value specified for EPSILON, using default (%.10f) instead\n", epsilon_d);
         } else {
       epsilon=(UINT32)ceil(1.0/d);
       epsilon_d=d;
@@ -580,13 +580,13 @@ void hcct_dump()
                   
     #if BURSTING==1
   // c <tool> <epsilon> <sampling_interval> <burst_length> <exhaustive_enter_events>
-  fprintf(out, "c lss-hcct-burst %f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, _TLS_exhaustive_enter_events);
+  fprintf(out, "c lss-hcct-burst %.10f %lu %lu %llu\n", epsilon_d, sampling_interval, burst_length, _TLS_exhaustive_enter_events);
   #elif PROFILE_TIME==1
   // c <tool> <epsilon> <sampling_interval> <thread_tics>
-  fprintf(out, "c lss-hcct-time %f %lu %llu\n", epsilon_d, sampling_interval, _TLS_thread_tics);
+  fprintf(out, "c lss-hcct-time %.10f %lu %llu\n", epsilon_d, sampling_interval, _TLS_thread_tics);
   #else
   // c <tool> <epsilon>
-  fprintf(out, "c lss-hcct %f\n", epsilon_d);           
+  fprintf(out, "c lss-hcct %.10f\n", epsilon_d);           
   #endif
       
   // c <command> <process/thread id> <working directory>
