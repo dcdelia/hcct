@@ -3,7 +3,7 @@
 
 **This page is under construction, as the project has just been moved from Google Code!**
 
-HCCT is a performance profiler that leverages on efficient streaming algorithms to build a relevant subset of the Calling Context Tree using limited memory resources. This subset, formally known as Hot Calling Context Tree, includes only those contexts that are representative of hot spots and possibly source of performance bottlenecks during the execution.
+HCCT is a performance profiler that leverages efficient streaming algorithms to build a relevant subset of the Calling Context Tree using limited memory resources. This subset, formally known as Hot Calling Context Tree, includes only those contexts that are representative of hot spots and possibly source of performance bottlenecks during the execution.
 
 This tool works on any 32-bit Linux distribution and is based on the gcc 4.x compiler.
 
