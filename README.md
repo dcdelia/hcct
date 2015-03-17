@@ -11,6 +11,6 @@ Check out the code and have a look at the *profiler/README* to get started!
 
 We have also developed a library for solving addresses to symbols, and a set of tools for the analysis and comparison of CCTs/HCCTs resulting from distinct executions. These components are available in the *analysis/* folder.
 
-The main ideas behind this tool are described in the paper [Mining hot calling contexts in small space](http://dx.doi.org/10.1145/1993316.1993559) appeared at PLDI '11 (*Proceedings of the 32nd ACM SIGPLAN conference on Programming language design and implementation*). <!-- The paper is available [here](http://www.dis.uniroma1.it/~demetres/didattica/ae/upload/papers/pldi149-delia.pdf) for download. -->
+The main ideas behind this tool are described in the paper [Mining hot calling contexts in small space](http://dx.doi.org/10.1145/1993316.1993559) appeared at PLDI '11 (*Proceedings of the 32nd ACM SIGPLAN conference on Programming language design and implementation*).
 
 This tool has originally been written as part of the Master's Thesis of one of the authors, and the original release of the code is available under the *thesis* folder. If you're not familiar with context-sensitive profiling techniques and data streaming algorithms, you can download the thesis [here](http://www.dis.uniroma1.it/~delia/files/thesis.pdf).
