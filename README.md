@@ -7,7 +7,7 @@ HCCT is a performance profiler that leverages efficient streaming algorithms to 
 
 This tool works on any 32-bit Linux distribution and is based on the gcc 4.x compiler.
 
-Check out the code and have a look at the *profiler/README* to get started!
+Check out the code and have a look at *profiler/README* to get started!
 
 We have also developed a library for solving addresses to symbols, and a set of tools for the analysis and comparison of CCTs/HCCTs resulting from distinct executions. These components are available in the *analysis/* folder.
 
