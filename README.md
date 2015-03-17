@@ -5,7 +5,7 @@
 
 HCCT is a performance profiler that leverages on efficient streaming algorithms to build a relevant subset of the Calling Context Tree using limited memory resources. This subset, formally known as Hot Calling Context Tree, includes only those contexts that are representative of hot spots and possibly source of performance bottlenecks during the execution.
 
-This tool works on any 32-bit Linux distribution and is based on the gcc 4.x compiler. Check out the *testing* folder and have a look at the *README* file to get started!
+This tool works on any 32-bit Linux distribution and is based on the gcc 4.x compiler. Check out the code and have a look at the *profiler/README* file to get started!
 
 The main ideas behind this tool are described in the paper [Mining hot calling contexts in small space](http://dx.doi.org/10.1145/1993316.1993559) appeared at PLDI '11 (*Proceedings of the 32nd ACM SIGPLAN conference on Programming language design and implementation*). The paper is available [here](http://www.dis.uniroma1.it/~demetres/didattica/ae/upload/papers/pldi149-delia.pdf) for download.
 
